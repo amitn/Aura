@@ -111,7 +111,7 @@ pio run --target upload
 
 1. **Configure Arduino IDE**
    - Board: `ESP32 Dev Module`
-   - Partition Scheme: `Huge App (3MB No OTA/1MB SPIFFS)`
+   - Partition Scheme: `Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS)`
 
 2. **Install Required Libraries**
    | Library | Version |
@@ -140,7 +140,7 @@ Aura/
 ├── src/                  # Source files
 │   ├── main.cpp          # Main application logic
 │   ├── icon_*.c          # Weather icon assets (24x24)
-│   ├── image_*.c         # Weather images (96x96)
+│   ├── image_*.c         # Weather images (64x64)
 │   └── lv_font_*.c       # Custom Latin fonts
 ├── include/              # Header files
 │   ├── lv_conf.h         # LVGL configuration

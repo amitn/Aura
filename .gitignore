@@ -32,3 +32,6 @@ __pycache__/
 
 # User configuration (contains credentials)
 include/config.h
+
+# Script caches
+scripts/image_cache/
