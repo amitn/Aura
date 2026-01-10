@@ -81,6 +81,7 @@ pio device monitor
 For convenience, a Makefile wraps common commands:
 
 ```bash
+make config         # Create/edit config.h from template
 make build          # Build the project
 make upload         # Upload firmware to device
 make monitor        # Open serial monitor
@@ -165,10 +166,11 @@ You can pre-configure WiFi, location, and transit settings at compile time. This
 **Setup:**
 
 ```bash
-# Copy the example config file
-cp include/config.h.example include/config.h
+# Create and edit config.h (interactive)
+make config
 
-# Edit with your settings
+# Or manually:
+cp include/config.h.example include/config.h
 nano include/config.h
 ```
 

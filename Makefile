@@ -1,7 +1,7 @@
 # Makefile for Aura - ESP32 Weather Widget
 # Wraps PlatformIO commands for convenience
 
-.PHONY: all build upload monitor clean fullclean sync compile_commands help
+.PHONY: all build upload monitor clean fullclean sync compile_commands config help
 
 # Default target
 all: build
@@ -56,6 +56,19 @@ check:
 info:
 	pio project config
 
+# Create/edit configuration file
+config:
+	@if [ ! -f include/config.h ]; then \
+		echo "Creating include/config.h from template..."; \
+		cp include/config.h.example include/config.h; \
+		echo "Created include/config.h"; \
+	else \
+		echo "include/config.h already exists"; \
+	fi
+	@echo ""
+	@echo "Opening config.h for editing..."
+	@$${EDITOR:-nano} include/config.h
+
 # Help
 help:
 	@echo "Aura - ESP32 Weather Widget"
@@ -76,4 +89,5 @@ help:
 	@echo "  devices        List connected devices"
 	@echo "  check          Run static code analysis"
 	@echo "  info           Show project configuration"
+	@echo "  config         Create/edit config.h from template"
 	@echo "  help           Show this help message"
