@@ -35,8 +35,14 @@
 #ifndef CONFIG_LOCATION
 #define CONFIG_LOCATION ""
 #endif
-#ifndef CONFIG_BUS_STOP_ID
-#define CONFIG_BUS_STOP_ID ""
+#ifndef CONFIG_BUS_STOP_ID_1
+#define CONFIG_BUS_STOP_ID_1 ""
+#endif
+#ifndef CONFIG_BUS_STOP_ID_2
+#define CONFIG_BUS_STOP_ID_2 ""
+#endif
+#ifndef CONFIG_BUS_STOP_ID_3
+#define CONFIG_BUS_STOP_ID_3 ""
 #endif
 #ifndef CONFIG_TUBE_STATION_ID
 #define CONFIG_TUBE_STATION_ID ""
@@ -180,11 +186,12 @@ static lv_obj_t *lbl_tube_header;
 static lv_obj_t *lbl_bus_arrivals[4];
 static lv_obj_t *lbl_tube_arrivals[4];
 static lv_obj_t *transit_settings_win = nullptr;
-static lv_obj_t *bus_stop_ta;
+static lv_obj_t *bus_stop_ta[MAX_BUS_STOPS];
 static lv_obj_t *tube_station_ta;
 
 // Transit preferences
-static char bus_stop_id[32] = "";
+#define MAX_BUS_STOPS 3
+static char bus_stop_ids[MAX_BUS_STOPS][32] = {"", "", ""};
 static char tube_station_id[32] = "";
 static bool transit_enabled = false;
 
@@ -284,6 +291,7 @@ void fetch_tube_arrivals();
 void update_transit_display();
 void create_transit_settings_dialog();
 static void transit_cb(lv_event_t *e);
+bool any_bus_stop_configured();
 
 // Screen dimming functions
 bool night_mode_should_be_active();
@@ -472,14 +480,18 @@ void setup() {
   auto_rotate_interval = prefs.getUInt("autoRotateInt", CONFIG_AUTO_ROTATE_INTERVAL);
   
   // Load transit preferences with compile-time config as defaults
-  const char* bus_default = CONFIG_BUS_STOP_ID;
+  const char* bus_defaults[MAX_BUS_STOPS] = {CONFIG_BUS_STOP_ID_1, CONFIG_BUS_STOP_ID_2, CONFIG_BUS_STOP_ID_3};
   const char* tube_default = CONFIG_TUBE_STATION_ID;
   
-  String busStop = prefs.getString("busStopId", bus_default);
-  busStop.toCharArray(bus_stop_id, sizeof(bus_stop_id));
+  for (int i = 0; i < MAX_BUS_STOPS; i++) {
+    char key[16];
+    snprintf(key, sizeof(key), "busStopId%d", i + 1);
+    String busStop = prefs.getString(key, bus_defaults[i]);
+    busStop.toCharArray(bus_stop_ids[i], sizeof(bus_stop_ids[i]));
+  }
   String tubeStation = prefs.getString("tubeStationId", tube_default);
   tubeStation.toCharArray(tube_station_id, sizeof(tube_station_id));
-  transit_enabled = (strlen(bus_stop_id) > 0 || strlen(tube_station_id) > 0);
+  transit_enabled = (any_bus_stop_configured() || strlen(tube_station_id) > 0);
   
   analogWrite(LCD_BACKLIGHT_PIN, brightness);
 
@@ -898,19 +910,27 @@ static void change_location_event_cb(lv_event_t *e) {
 
 // Transit settings dialog callbacks
 static void transit_save_event_cb(lv_event_t *e) {
-  const char *bus_id = lv_textarea_get_text(bus_stop_ta);
   const char *tube_id = lv_textarea_get_text(tube_station_ta);
   
-  strncpy(bus_stop_id, bus_id, sizeof(bus_stop_id) - 1);
-  strncpy(tube_station_id, tube_id, sizeof(tube_station_id) - 1);
+  for (int i = 0; i < MAX_BUS_STOPS; i++) {
+    const char *bus_id = lv_textarea_get_text(bus_stop_ta[i]);
+    strncpy(bus_stop_ids[i], bus_id, sizeof(bus_stop_ids[i]) - 1);
+    
+    char key[16];
+    snprintf(key, sizeof(key), "busStopId%d", i + 1);
+    prefs.putString(key, bus_stop_ids[i]);
+    
+    Serial.print("Saved bus stop ID ");
+    Serial.print(i + 1);
+    Serial.print(": ");
+    Serial.println(bus_stop_ids[i]);
+  }
   
-  prefs.putString("busStopId", bus_stop_id);
+  strncpy(tube_station_id, tube_id, sizeof(tube_station_id) - 1);
   prefs.putString("tubeStationId", tube_station_id);
   
-  transit_enabled = (strlen(bus_stop_id) > 0 || strlen(tube_station_id) > 0);
+  transit_enabled = (any_bus_stop_configured() || strlen(tube_station_id) > 0);
   
-  Serial.print("Saved bus stop ID: ");
-  Serial.println(bus_stop_id);
   Serial.print("Saved tube station ID: ");
   Serial.println(tube_station_id);
   
@@ -943,44 +963,54 @@ void create_transit_settings_dialog() {
   
   lv_obj_t *cont = lv_win_get_content(transit_settings_win);
   
-  // Bus stop ID label
-  lv_obj_t *lbl_bus = lv_label_create(cont);
-  lv_label_set_text(lbl_bus, strings->bus_stop_id);
-  lv_obj_set_style_text_font(lbl_bus, get_font_12(), LV_PART_MAIN | LV_STATE_DEFAULT);
-  lv_obj_align(lbl_bus, LV_ALIGN_TOP_LEFT, 5, 10);
+  int y_offset = 5;
   
-  // Bus stop ID text area
-  bus_stop_ta = lv_textarea_create(cont);
-  lv_textarea_set_one_line(bus_stop_ta, true);
-  lv_textarea_set_placeholder_text(bus_stop_ta, strings->stop_id_placeholder);
-  lv_textarea_set_text(bus_stop_ta, bus_stop_id);
-  lv_obj_set_width(bus_stop_ta, 200);
-  lv_obj_align(bus_stop_ta, LV_ALIGN_TOP_LEFT, 5, 30);
-  lv_obj_add_event_cb(bus_stop_ta, ta_event_cb, LV_EVENT_CLICKED, kb);
-  lv_obj_add_event_cb(bus_stop_ta, ta_defocus_cb, LV_EVENT_DEFOCUSED, kb);
+  // Bus stops label
+  lv_obj_t *lbl_bus = lv_label_create(cont);
+  lv_label_set_text(lbl_bus, strings->bus_stop_label);
+  lv_obj_set_style_text_font(lbl_bus, get_font_12(), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_align(lbl_bus, LV_ALIGN_TOP_LEFT, 5, y_offset);
+  y_offset += 18;
+  
+  // Bus stop text areas (3 stops)
+  for (int i = 0; i < MAX_BUS_STOPS; i++) {
+    bus_stop_ta[i] = lv_textarea_create(cont);
+    lv_textarea_set_one_line(bus_stop_ta[i], true);
+    lv_textarea_set_placeholder_text(bus_stop_ta[i], strings->stop_id_placeholder);
+    lv_textarea_set_text(bus_stop_ta[i], bus_stop_ids[i]);
+    lv_obj_set_width(bus_stop_ta[i], 210);
+    lv_obj_align(bus_stop_ta[i], LV_ALIGN_TOP_LEFT, 5, y_offset);
+    lv_obj_add_event_cb(bus_stop_ta[i], ta_event_cb, LV_EVENT_CLICKED, kb);
+    lv_obj_add_event_cb(bus_stop_ta[i], ta_defocus_cb, LV_EVENT_DEFOCUSED, kb);
+    y_offset += 32;
+  }
+  
+  y_offset += 5;
   
   // Tube station ID label
   lv_obj_t *lbl_tube = lv_label_create(cont);
   lv_label_set_text(lbl_tube, strings->tube_station_id);
   lv_obj_set_style_text_font(lbl_tube, get_font_12(), LV_PART_MAIN | LV_STATE_DEFAULT);
-  lv_obj_align(lbl_tube, LV_ALIGN_TOP_LEFT, 5, 70);
+  lv_obj_align(lbl_tube, LV_ALIGN_TOP_LEFT, 5, y_offset);
+  y_offset += 18;
   
   // Tube station ID text area
   tube_station_ta = lv_textarea_create(cont);
   lv_textarea_set_one_line(tube_station_ta, true);
   lv_textarea_set_placeholder_text(tube_station_ta, "e.g. 940GZZLUOXC");
   lv_textarea_set_text(tube_station_ta, tube_station_id);
-  lv_obj_set_width(tube_station_ta, 200);
-  lv_obj_align(tube_station_ta, LV_ALIGN_TOP_LEFT, 5, 90);
+  lv_obj_set_width(tube_station_ta, 210);
+  lv_obj_align(tube_station_ta, LV_ALIGN_TOP_LEFT, 5, y_offset);
   lv_obj_add_event_cb(tube_station_ta, ta_event_cb, LV_EVENT_CLICKED, kb);
   lv_obj_add_event_cb(tube_station_ta, ta_defocus_cb, LV_EVENT_DEFOCUSED, kb);
+  y_offset += 35;
   
   // Help text
   lv_obj_t *lbl_help = lv_label_create(cont);
   lv_label_set_text(lbl_help, "Find stop IDs at tfl.gov.uk");
   lv_obj_set_style_text_font(lbl_help, get_font_12(), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_color(lbl_help, lv_color_hex(0x666666), LV_PART_MAIN | LV_STATE_DEFAULT);
-  lv_obj_align(lbl_help, LV_ALIGN_TOP_LEFT, 5, 130);
+  lv_obj_align(lbl_help, LV_ALIGN_TOP_LEFT, 5, y_offset);
   
   // Save button
   lv_obj_t *btn_save = lv_btn_create(cont);
@@ -1624,9 +1654,19 @@ void fetch_and_update_weather() {
   http.end();
 }
 
+// Helper function to check if any bus stop is configured
+bool any_bus_stop_configured() {
+  for (int i = 0; i < MAX_BUS_STOPS; i++) {
+    if (strlen(bus_stop_ids[i]) > 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // TfL API Functions
 void fetch_tfl_arrivals() {
-  if (strlen(bus_stop_id) > 0) {
+  if (any_bus_stop_configured()) {
     fetch_bus_arrivals();
   }
   if (strlen(tube_station_id) > 0) {
@@ -1638,60 +1678,61 @@ void fetch_tfl_arrivals() {
 void fetch_bus_arrivals() {
   if (WiFi.status() != WL_CONNECTED) return;
   
-  String url = String("https://api.tfl.gov.uk/StopPoint/") + bus_stop_id + "/Arrivals";
+  // Temporary storage for all arrivals from all stops
+  ArrivalInfo all_arrivals[30];  // Up to 10 arrivals per stop
+  int total_count = 0;
   
-  HTTPClient http;
-  http.begin(url);
-  
-  if (http.GET() == HTTP_CODE_OK) {
-    Serial.println("Fetched bus arrivals from TfL: " + url);
+  // Fetch arrivals from each configured bus stop
+  for (int stop = 0; stop < MAX_BUS_STOPS; stop++) {
+    if (strlen(bus_stop_ids[stop]) == 0) continue;
     
-    String payload = http.getString();
-    DynamicJsonDocument doc(8 * 1024);
+    String url = String("https://api.tfl.gov.uk/StopPoint/") + bus_stop_ids[stop] + "/Arrivals";
     
-    if (deserializeJson(doc, payload) == DeserializationError::Ok) {
-      JsonArray arrivals = doc.as<JsonArray>();
+    HTTPClient http;
+    http.begin(url);
+    
+    if (http.GET() == HTTP_CODE_OK) {
+      Serial.println("Fetched bus arrivals from TfL: " + url);
       
-      // Sort arrivals by timeToStation and take first 4
-      // Simple bubble sort for small array
-      int count = min((int)arrivals.size(), 10);
-      int indices[10];
-      int times[10];
+      String payload = http.getString();
+      DynamicJsonDocument doc(8 * 1024);
       
-      for (int i = 0; i < count; i++) {
-        indices[i] = i;
-        times[i] = arrivals[i]["timeToStation"].as<int>();
-      }
-      
-      for (int i = 0; i < count - 1; i++) {
-        for (int j = 0; j < count - i - 1; j++) {
-          if (times[j] > times[j + 1]) {
-            int temp = times[j];
-            times[j] = times[j + 1];
-            times[j + 1] = temp;
-            temp = indices[j];
-            indices[j] = indices[j + 1];
-            indices[j + 1] = temp;
-          }
+      if (deserializeJson(doc, payload) == DeserializationError::Ok) {
+        JsonArray arrivals = doc.as<JsonArray>();
+        
+        int count = min((int)arrivals.size(), 10);
+        for (int i = 0; i < count && total_count < 30; i++) {
+          JsonObject arrival = arrivals[i];
+          strncpy(all_arrivals[total_count].line, arrival["lineName"] | "?", sizeof(all_arrivals[total_count].line) - 1);
+          strncpy(all_arrivals[total_count].destination, arrival["destinationName"] | "?", sizeof(all_arrivals[total_count].destination) - 1);
+          all_arrivals[total_count].timeToStation = arrival["timeToStation"].as<int>();
+          total_count++;
         }
-      }
-      
-      bus_arrival_count = min(count, 4);
-      for (int i = 0; i < bus_arrival_count; i++) {
-        JsonObject arrival = arrivals[indices[i]];
-        strncpy(bus_arrivals[i].line, arrival["lineName"] | "?", sizeof(bus_arrivals[i].line) - 1);
-        strncpy(bus_arrivals[i].destination, arrival["destinationName"] | "?", sizeof(bus_arrivals[i].destination) - 1);
-        bus_arrivals[i].timeToStation = arrival["timeToStation"].as<int>();
+      } else {
+        Serial.println("JSON parse failed for bus arrivals");
       }
     } else {
-      Serial.println("JSON parse failed for bus arrivals");
-      bus_arrival_count = 0;
+      Serial.println("HTTP GET failed for bus arrivals: " + url);
     }
-  } else {
-    Serial.println("HTTP GET failed for bus arrivals: " + url);
-    bus_arrival_count = 0;
+    http.end();
   }
-  http.end();
+  
+  // Sort all arrivals by timeToStation using bubble sort
+  for (int i = 0; i < total_count - 1; i++) {
+    for (int j = 0; j < total_count - i - 1; j++) {
+      if (all_arrivals[j].timeToStation > all_arrivals[j + 1].timeToStation) {
+        ArrivalInfo temp = all_arrivals[j];
+        all_arrivals[j] = all_arrivals[j + 1];
+        all_arrivals[j + 1] = temp;
+      }
+    }
+  }
+  
+  // Copy first 4 arrivals to display
+  bus_arrival_count = min(total_count, 4);
+  for (int i = 0; i < bus_arrival_count; i++) {
+    bus_arrivals[i] = all_arrivals[i];
+  }
 }
 
 void fetch_tube_arrivals() {
@@ -1780,7 +1821,7 @@ void update_transit_display() {
         buf[35] = '\0';
       }
       lv_label_set_text(lbl_bus_arrivals[i], buf);
-    } else if (i == 0 && bus_arrival_count == 0 && strlen(bus_stop_id) > 0) {
+    } else if (i == 0 && bus_arrival_count == 0 && any_bus_stop_configured()) {
       lv_label_set_text(lbl_bus_arrivals[i], strings->no_arrivals);
     } else {
       lv_label_set_text(lbl_bus_arrivals[i], "");

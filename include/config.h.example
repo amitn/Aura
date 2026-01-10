@@ -35,8 +35,11 @@
 // =============================================================================
 // Pre-configure London bus stop and tube station IDs.
 // Find stop IDs at: https://tfl.gov.uk/
+// Up to 3 bus stops can be configured
 
-#define CONFIG_BUS_STOP_ID ""      // e.g., "490008660N"
+#define CONFIG_BUS_STOP_ID_1 ""    // e.g., "490008660N"
+#define CONFIG_BUS_STOP_ID_2 ""    // Second bus stop (optional)
+#define CONFIG_BUS_STOP_ID_3 ""    // Third bus stop (optional)
 #define CONFIG_TUBE_STATION_ID ""  // e.g., "940GZZLUOXC"
 
 // =============================================================================
