@@ -1282,7 +1282,7 @@ void fetch_and_update_weather() {
                + latitude + "&longitude=" + longitude
                + "&current=temperature_2m,apparent_temperature,is_day,weather_code"
                + "&daily=temperature_2m_min,temperature_2m_max,weather_code,sunrise,sunset"
-               + "&hourly=temperature_2m,precipitation_probability,is_day,weather_code"
+               + "&hourly=temperature_2m,precipitation_probability,precipitation,is_day,weather_code"
                + "&forecast_hours=7"
                + "&timezone=auto";
 
@@ -1382,6 +1382,7 @@ void fetch_and_update_weather() {
       JsonArray hours = doc["hourly"]["time"].as<JsonArray>();
       JsonArray hourly_temps = doc["hourly"]["temperature_2m"].as<JsonArray>();
       JsonArray precipitation_probabilities = doc["hourly"]["precipitation_probability"].as<JsonArray>();
+      JsonArray precipitations = doc["hourly"]["precipitation"].as<JsonArray>();
       JsonArray hourly_weather_codes = doc["hourly"]["weather_code"].as<JsonArray>();
       JsonArray hourly_is_day = doc["hourly"]["is_day"].as<JsonArray>();
 
@@ -1392,6 +1393,7 @@ void fetch_and_update_weather() {
         String hour_name = hour_of_day(hour);
 
         float precipitation_probability = precipitation_probabilities[i].as<float>();
+        float precipitation_mm = precipitations[i].as<float>();
         float temp = hourly_temps[i].as<float>();
         if (use_fahrenheit) {
           temp = temp * 9.0 / 5.0 + 32.0;
@@ -1402,7 +1404,22 @@ void fetch_and_update_weather() {
         } else {
           lv_label_set_text(lbl_hourly[i], hour_name.c_str());
         }
-        lv_label_set_text_fmt(lbl_precipitation_probability[i], "%.0f%%", precipitation_probability);
+        
+        // Show precipitation amount if > 0, otherwise show probability
+        if (precipitation_mm >= 0.1f) {
+          if (use_fahrenheit) {
+            // Convert mm to inches (1 inch = 25.4 mm)
+            float precipitation_in = precipitation_mm / 25.4f;
+            lv_label_set_text_fmt(lbl_precipitation_probability[i], "%.1fin", precipitation_in);
+          } else {
+            lv_label_set_text_fmt(lbl_precipitation_probability[i], "%.1fmm", precipitation_mm);
+          }
+        } else if (precipitation_probability > 0) {
+          lv_label_set_text_fmt(lbl_precipitation_probability[i], "%.0f%%", precipitation_probability);
+        } else {
+          lv_label_set_text(lbl_precipitation_probability[i], "");
+        }
+        
         lv_label_set_text_fmt(lbl_hourly_temp[i], "%.0f°%c", temp, unit);
         lv_img_set_src(img_hourly[i], choose_icon(hourly_weather_codes[i].as<int>(), hourly_is_day[i].as<int>()));
       }
