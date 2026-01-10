@@ -10,6 +10,53 @@
 #include "esp_system.h"
 #include "translations.h"
 
+// Optional compile-time configuration
+// Copy config.h.example to config.h and customize
+#if __has_include("config.h")
+#include "config.h"
+#define HAS_CONFIG_H 1
+#else
+#define HAS_CONFIG_H 0
+#endif
+
+// Default values for optional config
+#ifndef WIFI_SSID
+#define WIFI_SSID ""
+#endif
+#ifndef WIFI_PASSWORD
+#define WIFI_PASSWORD ""
+#endif
+#ifndef CONFIG_LATITUDE
+#define CONFIG_LATITUDE ""
+#endif
+#ifndef CONFIG_LONGITUDE
+#define CONFIG_LONGITUDE ""
+#endif
+#ifndef CONFIG_LOCATION
+#define CONFIG_LOCATION ""
+#endif
+#ifndef CONFIG_BUS_STOP_ID
+#define CONFIG_BUS_STOP_ID ""
+#endif
+#ifndef CONFIG_TUBE_STATION_ID
+#define CONFIG_TUBE_STATION_ID ""
+#endif
+#ifndef CONFIG_USE_FAHRENHEIT
+#define CONFIG_USE_FAHRENHEIT false
+#endif
+#ifndef CONFIG_USE_24_HOUR
+#define CONFIG_USE_24_HOUR false
+#endif
+#ifndef CONFIG_USE_NIGHT_MODE
+#define CONFIG_USE_NIGHT_MODE false
+#endif
+#ifndef CONFIG_BRIGHTNESS
+#define CONFIG_BRIGHTNESS 128
+#endif
+#ifndef CONFIG_LANGUAGE
+#define CONFIG_LANGUAGE LANG_EN
+#endif
+
 #define XPT2046_IRQ 36   // T_IRQ
 #define XPT2046_MOSI 32  // T_DIN
 #define XPT2046_MISO 39  // T_OUT
@@ -382,23 +429,34 @@ void setup() {
   lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
   lv_indev_set_read_cb(indev, touchscreen_read);
 
-  // Load saved prefs
+  // Load saved prefs with compile-time config as defaults
   prefs.begin("weather", false);
-  String lat = prefs.getString("latitude", LATITUDE_DEFAULT);
-  lat.toCharArray(latitude, sizeof(latitude));
-  String lon = prefs.getString("longitude", LONGITUDE_DEFAULT);
-  lon.toCharArray(longitude, sizeof(longitude));
-  use_fahrenheit = prefs.getBool("useFahrenheit", false);
-  location = prefs.getString("location", LOCATION_DEFAULT);
-  use_night_mode = prefs.getBool("useNightMode", false);
-  uint32_t brightness = prefs.getUInt("brightness", 255);
-  use_24_hour = prefs.getBool("use24Hour", false);
-  current_language = (Language)prefs.getUInt("language", LANG_EN);
   
-  // Load transit preferences
-  String busStop = prefs.getString("busStopId", "");
+  // Location: use compile-time config if set, otherwise use hardcoded defaults
+  const char* lat_default = (strlen(CONFIG_LATITUDE) > 0) ? CONFIG_LATITUDE : LATITUDE_DEFAULT;
+  const char* lon_default = (strlen(CONFIG_LONGITUDE) > 0) ? CONFIG_LONGITUDE : LONGITUDE_DEFAULT;
+  const char* loc_default = (strlen(CONFIG_LOCATION) > 0) ? CONFIG_LOCATION : LOCATION_DEFAULT;
+  
+  String lat = prefs.getString("latitude", lat_default);
+  lat.toCharArray(latitude, sizeof(latitude));
+  String lon = prefs.getString("longitude", lon_default);
+  lon.toCharArray(longitude, sizeof(longitude));
+  location = prefs.getString("location", loc_default);
+  
+  // Display preferences: use compile-time config as defaults
+  use_fahrenheit = prefs.getBool("useFahrenheit", CONFIG_USE_FAHRENHEIT);
+  use_night_mode = prefs.getBool("useNightMode", CONFIG_USE_NIGHT_MODE);
+  uint32_t brightness = prefs.getUInt("brightness", CONFIG_BRIGHTNESS);
+  use_24_hour = prefs.getBool("use24Hour", CONFIG_USE_24_HOUR);
+  current_language = (Language)prefs.getUInt("language", CONFIG_LANGUAGE);
+  
+  // Load transit preferences with compile-time config as defaults
+  const char* bus_default = CONFIG_BUS_STOP_ID;
+  const char* tube_default = CONFIG_TUBE_STATION_ID;
+  
+  String busStop = prefs.getString("busStopId", bus_default);
   busStop.toCharArray(bus_stop_id, sizeof(bus_stop_id));
-  String tubeStation = prefs.getString("tubeStationId", "");
+  String tubeStation = prefs.getString("tubeStationId", tube_default);
   tubeStation.toCharArray(tube_station_id, sizeof(tube_station_id));
   transit_enabled = (strlen(bus_stop_id) > 0 || strlen(tube_station_id) > 0);
   
@@ -407,7 +465,30 @@ void setup() {
   // Check for Wi-Fi config and request it if not available
   WiFiManager wm;
   wm.setAPCallback(apModeCallback);
+  
+  // Use compile-time WiFi credentials if configured
+  #if defined(WIFI_SSID) && defined(WIFI_PASSWORD)
+  if (strlen(WIFI_SSID) > 0 && strlen(WIFI_PASSWORD) > 0) {
+    Serial.println("Using compile-time WiFi credentials");
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    int timeout = 20; // 10 second timeout
+    while (WiFi.status() != WL_CONNECTED && timeout > 0) {
+      delay(500);
+      Serial.print(".");
+      timeout--;
+    }
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("\nCompile-time WiFi failed, falling back to WiFiManager");
+      wm.autoConnect(DEFAULT_CAPTIVE_SSID);
+    } else {
+      Serial.println("\nWiFi connected!");
+    }
+  } else {
+    wm.autoConnect(DEFAULT_CAPTIVE_SSID);
+  }
+  #else
   wm.autoConnect(DEFAULT_CAPTIVE_SSID);
+  #endif
 
   lv_timer_create(update_clock, 1000, NULL);
 

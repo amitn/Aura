@@ -28,3 +28,7 @@ Thumbs.db
 # Python
 __pycache__/
 *.pyc
+.venv/
+
+# User configuration (contains credentials)
+include/config.h

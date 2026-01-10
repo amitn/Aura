@@ -135,6 +135,7 @@ pio run --target upload
 Aura/
 ├── platformio.ini        # PlatformIO configuration
 ├── Makefile              # Build shortcuts
+├── pyproject.toml        # Python/uv dependencies
 ├── src/                  # Source files
 │   ├── main.cpp          # Main application logic
 │   ├── icon_*.c          # Weather icon assets (24x24)
@@ -142,7 +143,8 @@ Aura/
 │   └── lv_font_*.c       # Custom Latin fonts
 ├── include/              # Header files
 │   ├── lv_conf.h         # LVGL configuration
-│   └── translations.h    # Multi-language strings
+│   ├── translations.h    # Multi-language strings
+│   └── config.h.example  # Configuration template
 ├── lib/                  # Project-specific libraries
 ├── aura/                 # Legacy Arduino IDE files
 ├── lvgl/                 # LVGL config (for Arduino IDE)
@@ -152,6 +154,49 @@ Aura/
 ---
 
 ## ⚙️ Configuration
+
+### Compile-Time Configuration (Optional)
+
+You can pre-configure WiFi, location, and transit settings at compile time. This is useful for:
+- Faster initial setup (skip the captive portal)
+- Flashing multiple devices with the same configuration
+- Headless deployment
+
+**Setup:**
+
+```bash
+# Copy the example config file
+cp include/config.h.example include/config.h
+
+# Edit with your settings
+nano include/config.h
+```
+
+**Available options in `config.h`:**
+
+```c
+// WiFi credentials (skip captive portal setup)
+#define WIFI_SSID "YourNetworkName"
+#define WIFI_PASSWORD "YourPassword"
+
+// Location for weather data
+#define CONFIG_LATITUDE "51.5074"
+#define CONFIG_LONGITUDE "-0.1278"
+#define CONFIG_LOCATION "London, England"
+
+// TfL transit (London only)
+#define CONFIG_BUS_STOP_ID "490008660N"
+#define CONFIG_TUBE_STATION_ID "940GZZLUOXC"
+
+// Display preferences
+#define CONFIG_USE_FAHRENHEIT false
+#define CONFIG_USE_24_HOUR true
+#define CONFIG_USE_NIGHT_MODE true
+#define CONFIG_BRIGHTNESS 200
+#define CONFIG_LANGUAGE LANG_EN
+```
+
+> 🔒 **Security**: `config.h` is gitignored to keep your credentials private.
 
 ### First-Time Setup (WiFi)
 

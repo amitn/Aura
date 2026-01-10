@@ -1,0 +1,59 @@
+/**
+ * Aura Configuration File
+ * 
+ * Copy this file to config.h and customize the values below.
+ * config.h is gitignored to keep your credentials private.
+ * 
+ * All settings are optional - leave them as empty strings "" to use
+ * the on-device configuration instead.
+ */
+
+#ifndef CONFIG_H
+#define CONFIG_H
+
+// =============================================================================
+// WiFi Configuration (Optional)
+// =============================================================================
+// Pre-configure WiFi credentials to skip the captive portal setup.
+// Leave empty to use WiFiManager's captive portal for setup.
+
+#define WIFI_SSID ""           // Your WiFi network name
+#define WIFI_PASSWORD ""       // Your WiFi password
+
+// =============================================================================
+// Location Configuration (Optional)
+// =============================================================================
+// Pre-configure your location for weather data.
+// Find coordinates at: https://www.latlong.net/
+
+#define CONFIG_LATITUDE ""     // e.g., "51.5074" for London
+#define CONFIG_LONGITUDE ""    // e.g., "-0.1278" for London
+#define CONFIG_LOCATION ""     // e.g., "London, England"
+
+// =============================================================================
+// TfL Transit Configuration (Optional - London only)
+// =============================================================================
+// Pre-configure London bus stop and tube station IDs.
+// Find stop IDs at: https://tfl.gov.uk/
+
+#define CONFIG_BUS_STOP_ID ""      // e.g., "490008660N"
+#define CONFIG_TUBE_STATION_ID ""  // e.g., "940GZZLUOXC"
+
+// =============================================================================
+// Display Preferences (Optional)
+// =============================================================================
+// Pre-configure display preferences.
+
+#define CONFIG_USE_FAHRENHEIT false    // true for °F, false for °C
+#define CONFIG_USE_24_HOUR false       // true for 24hr, false for 12hr
+#define CONFIG_USE_NIGHT_MODE false    // true to enable night dimming
+#define CONFIG_BRIGHTNESS 128          // 1-255, default backlight brightness
+
+// =============================================================================
+// Language Configuration (Optional)
+// =============================================================================
+// Available languages: LANG_EN, LANG_ES, LANG_DE, LANG_FR, LANG_TR, LANG_SV, LANG_IT
+
+#define CONFIG_LANGUAGE LANG_EN
+
+#endif // CONFIG_H
