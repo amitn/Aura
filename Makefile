@@ -1,7 +1,7 @@
 # Makefile for Aura - ESP32 Weather Widget
 # Wraps PlatformIO commands for convenience
 
-.PHONY: all build upload monitor clean fullclean sync compile_commands config help
+.PHONY: all build upload monitor clean fullclean sync compile_commands config images help
 
 # Default target
 all: build
@@ -69,6 +69,10 @@ config:
 	@echo "Opening config.h for editing..."
 	@$${EDITOR:-nano} include/config.h
 
+# Download and resize weather images (64x64 for OTA support)
+images:
+	python scripts/resize_images.py
+
 # Help
 help:
 	@echo "Aura - ESP32 Weather Widget"
@@ -90,4 +94,5 @@ help:
 	@echo "  check          Run static code analysis"
 	@echo "  info           Show project configuration"
 	@echo "  config         Create/edit config.h from template"
+	@echo "  images         Download and resize weather images"
 	@echo "  help           Show this help message"
