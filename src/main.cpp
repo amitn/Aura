@@ -201,6 +201,20 @@ static void settings_event_handler(lv_event_t *e);
 const lv_img_dsc_t *choose_image(int wmo_code, int is_day);
 const lv_img_dsc_t *choose_icon(int wmo_code, int is_day);
 
+// Location/geocoding functions
+void do_geocode_query(const char *q);
+void create_location_dialog();
+
+// WiFi/AP mode functions
+void apModeCallback(WiFiManager *mgr);
+void wifi_splash_screen();
+
+// UI callback functions
+void daily_cb(lv_event_t *e);
+void hourly_cb(lv_event_t *e);
+static void reset_confirm_yes_cb(lv_event_t *e);
+static void reset_confirm_no_cb(lv_event_t *e);
+
 // Transit functions
 void fetch_tfl_arrivals();
 void fetch_bus_arrivals();
