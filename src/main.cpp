@@ -66,7 +66,7 @@
 #define CONFIG_AUTO_ROTATE false
 #endif
 #ifndef CONFIG_AUTO_ROTATE_INTERVAL
-#define CONFIG_AUTO_ROTATE_INTERVAL 3000
+#define CONFIG_AUTO_ROTATE_INTERVAL 10000
 #endif
 
 #define XPT2046_IRQ 36   // T_IRQ
@@ -142,7 +142,7 @@ static lv_timer_t *temp_screen_wakeup_timer = nullptr;
 
 // Auto-rotation variables
 static bool auto_rotate_enabled = false;
-static uint32_t auto_rotate_interval = 3000;  // Default 3 seconds
+static uint32_t auto_rotate_interval = 10000;  // Default 10 seconds
 static lv_timer_t *auto_rotate_timer = nullptr;
 static int current_panel = 0;  // 0=daily, 1=hourly, 2=transit
 
