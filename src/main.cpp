@@ -146,6 +146,10 @@ static uint32_t auto_rotate_interval = 10000;  // Default 10 seconds
 static lv_timer_t *auto_rotate_timer = nullptr;
 static int current_panel = 0;  // 0=daily, 1=hourly, 2=transit
 
+// Transit refresh timer
+static lv_timer_t *transit_refresh_timer = nullptr;
+#define TRANSIT_REFRESH_INTERVAL 5000  // 5 seconds
+
 // UI components
 static lv_obj_t *lbl_today_temp;
 static lv_obj_t *lbl_today_feels_like;
@@ -292,6 +296,7 @@ void update_transit_display();
 void create_transit_settings_dialog();
 static void transit_cb(lv_event_t *e);
 bool any_bus_stop_configured();
+static void transit_refresh_callback(lv_timer_t *timer);
 
 // Screen dimming functions
 bool night_mode_should_be_active();
@@ -759,6 +764,15 @@ void create_ui() {
   if (auto_rotate_enabled) {
     start_auto_rotation();
   }
+
+  // Start transit refresh timer if transit is enabled
+  if (transit_enabled) {
+    if (transit_refresh_timer) {
+      lv_timer_del(transit_refresh_timer);
+    }
+    transit_refresh_timer = lv_timer_create(transit_refresh_callback, TRANSIT_REFRESH_INTERVAL, NULL);
+    Serial.println("Transit refresh timer started (5 second interval)");
+  }
 }
 
 void populate_results_dropdown() {
@@ -937,9 +951,19 @@ static void transit_save_event_cb(lv_event_t *e) {
   lv_obj_del(transit_settings_win);
   transit_settings_win = nullptr;
   
-  // Fetch transit data if enabled
+  // Start or stop transit refresh timer based on enabled state
   if (transit_enabled) {
     fetch_tfl_arrivals();
+    if (!transit_refresh_timer) {
+      transit_refresh_timer = lv_timer_create(transit_refresh_callback, TRANSIT_REFRESH_INTERVAL, NULL);
+      Serial.println("Transit refresh timer started");
+    }
+  } else {
+    if (transit_refresh_timer) {
+      lv_timer_del(transit_refresh_timer);
+      transit_refresh_timer = nullptr;
+      Serial.println("Transit refresh timer stopped");
+    }
   }
 }
 
@@ -1662,6 +1686,13 @@ bool any_bus_stop_configured() {
     }
   }
   return false;
+}
+
+// Transit refresh timer callback
+static void transit_refresh_callback(lv_timer_t *timer) {
+  if (transit_enabled) {
+    fetch_tfl_arrivals();
+  }
 }
 
 // TfL API Functions
