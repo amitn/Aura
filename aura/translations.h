@@ -35,6 +35,17 @@ struct LocalizedStrings {
   const char* language_label;
   const char* weekdays[7];
   const char* use_night_mode;
+  // Transit strings
+  const char* transit_title;
+  const char* bus_stop_label;
+  const char* tube_station_label;
+  const char* no_arrivals;
+  const char* mins;
+  const char* due;
+  const char* transit_settings;
+  const char* bus_stop_id;
+  const char* tube_station_id;
+  const char* stop_id_placeholder;
 };
 
 #define DEFAULT_CAPTIVE_SSID "Aura"
@@ -65,7 +76,10 @@ static const LocalizedStrings strings_en = {
   "reconfigure Wi-Fi credentials.",
   "Language:",
   {"Sun", "Mon", "Tues", "Wed", "Thurs", "Fri", "Sat"},
-  "Dim screen at night"
+  "Dim screen at night",
+  // Transit strings
+  "TFL ARRIVALS", "Bus", "Underground", "No arrivals", "min", "Due",
+  "Transit Settings", "Bus Stop ID:", "Tube Station:", "e.g. 490008660N"
 };
 
 static const LocalizedStrings strings_es = {
@@ -96,7 +110,10 @@ static const LocalizedStrings strings_es = {
   "credenciales Wi-Fi.",
   "Idioma:",
   {"Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"},
-  "Pantalla noche"
+  "Pantalla noche",
+  // Transit strings
+  "LLEGADAS TFL", "Bus", "Metro", "Sin llegadas", "min", "Ahora",
+  "Config. Transporte", "ID Parada Bus:", "Estación Metro:", "ej. 490008660N"
 };
 
 static const LocalizedStrings strings_de = {
@@ -129,7 +146,10 @@ static const LocalizedStrings strings_de = {
   "neu zu konfigurieren.",
   "Sprache:",
   {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"},
-  "Nacht-Dimmen"
+  "Nacht-Dimmen",
+  // Transit strings
+  "TFL ANKÜNFTE", "Bus", "U-Bahn", "Keine Ankünfte", "Min", "Jetzt",
+  "Verkehr Einst.", "Bus Haltestelle:", "U-Bahn Station:", "z.B. 490008660N"
 };
 
 static const LocalizedStrings strings_fr = {
@@ -162,7 +182,10 @@ static const LocalizedStrings strings_fr = {
   "les identifiants Wi-Fi.",
   "Langue:",
   {"Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"},
-  "Nuit écran"
+  "Nuit écran",
+  // Transit strings
+  "ARRIVÉES TFL", "Bus", "Métro", "Aucune arrivée", "min", "Imminent",
+  "Param. Transport", "ID Arrêt Bus:", "Station Métro:", "ex. 490008660N"
 };
 
 static const LocalizedStrings strings_tr = {
@@ -192,7 +215,10 @@ static const LocalizedStrings strings_tr = {
   "gerekecek.",
   "Dil:",
   {"Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"},
-  "Gece kısık"
+  "Gece kısık",
+  // Transit strings
+  "TFL VARIŞLAR", "Otobüs", "Metro", "Variş yok", "dk", "Şimdi",
+  "Ulaşım Ayarlari", "Otobüs Duragi:", "Metro İstasyonu:", "örn. 490008660N"
 };
 
 static const LocalizedStrings strings_sv = {
@@ -226,7 +252,10 @@ static const LocalizedStrings strings_sv = {
   "autentiseringsuppgifter.",
   "Sprak:",
   {"Sön", "Man", "Tis", "Ons", "Tor", "Fre", "Lör"},
-  "Nattdämpning"
+  "Nattdämpning",
+  // Transit strings
+  "TFL ANKOMSTER", "Buss", "Tunnelbana", "Inga ankomster", "min", "Nu",
+  "Trafikinst.", "Busshållplats:", "T-banestation:", "t.ex. 490008660N"
 };
 
 static const LocalizedStrings strings_it = {
@@ -255,7 +284,10 @@ static const LocalizedStrings strings_it = {
   "riconfigurare le credenziali Wi-Fi.",
   "Lingua:",
   {"Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"},
-  "Schermo notte"
+  "Schermo notte",
+  // Transit strings
+  "ARRIVI TFL", "Bus", "Metro", "Nessun arrivo", "min", "In arrivo",
+  "Impost. Trasporti", "ID Fermata Bus:", "Stazione Metro:", "es. 490008660N"
 };
 
 static const LocalizedStrings* get_strings(Language current_language) {

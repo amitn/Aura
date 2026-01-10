@@ -110,6 +110,33 @@ static lv_obj_t *night_mode_switch;
 static lv_obj_t *language_dropdown;
 static lv_obj_t *lbl_clock;
 
+// Transit UI components
+static lv_obj_t *box_transit;
+static lv_obj_t *lbl_transit_title;
+static lv_obj_t *lbl_bus_header;
+static lv_obj_t *lbl_tube_header;
+static lv_obj_t *lbl_bus_arrivals[4];
+static lv_obj_t *lbl_tube_arrivals[4];
+static lv_obj_t *transit_settings_win = nullptr;
+static lv_obj_t *bus_stop_ta;
+static lv_obj_t *tube_station_ta;
+
+// Transit preferences
+static char bus_stop_id[32] = "";
+static char tube_station_id[32] = "";
+static bool transit_enabled = false;
+
+// Transit data storage
+struct ArrivalInfo {
+  char line[16];
+  char destination[32];
+  int timeToStation;  // seconds
+};
+static ArrivalInfo bus_arrivals[4];
+static ArrivalInfo tube_arrivals[4];
+static int bus_arrival_count = 0;
+static int tube_arrival_count = 0;
+
 // Weather icons
 LV_IMG_DECLARE(icon_blizzard);
 LV_IMG_DECLARE(icon_blowing_snow);
@@ -173,6 +200,14 @@ static void screen_event_cb(lv_event_t *e);
 static void settings_event_handler(lv_event_t *e);
 const lv_img_dsc_t *choose_image(int wmo_code, int is_day);
 const lv_img_dsc_t *choose_icon(int wmo_code, int is_day);
+
+// Transit functions
+void fetch_tfl_arrivals();
+void fetch_bus_arrivals();
+void fetch_tube_arrivals();
+void update_transit_display();
+void create_transit_settings_dialog();
+static void transit_cb(lv_event_t *e);
 
 // Screen dimming functions
 bool night_mode_should_be_active();
@@ -343,6 +378,14 @@ void setup() {
   uint32_t brightness = prefs.getUInt("brightness", 255);
   use_24_hour = prefs.getBool("use24Hour", false);
   current_language = (Language)prefs.getUInt("language", LANG_EN);
+  
+  // Load transit preferences
+  String busStop = prefs.getString("busStopId", "");
+  busStop.toCharArray(bus_stop_id, sizeof(bus_stop_id));
+  String tubeStation = prefs.getString("tubeStationId", "");
+  tubeStation.toCharArray(tube_station_id, sizeof(tube_station_id));
+  transit_enabled = (strlen(bus_stop_id) > 0 || strlen(tube_station_id) > 0);
+  
   analogWrite(LCD_BACKLIGHT_PIN, brightness);
 
   // Check for Wi-Fi config and request it if not available
@@ -513,6 +556,54 @@ void create_ui() {
 
   lv_obj_add_flag(box_hourly, LV_OBJ_FLAG_HIDDEN);
 
+  // Create transit panel (TfL bus and tube arrivals)
+  box_transit = lv_obj_create(scr);
+  lv_obj_set_size(box_transit, 220, 180);
+  lv_obj_align(box_transit, LV_ALIGN_TOP_LEFT, 10, 135);
+  lv_obj_set_style_bg_color(box_transit, lv_color_hex(0x5e9bc8), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_bg_opa(box_transit, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_radius(box_transit, 4, LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_border_width(box_transit, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_clear_flag(box_transit, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_scrollbar_mode(box_transit, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_set_style_pad_all(box_transit, 8, LV_PART_MAIN);
+  lv_obj_set_style_pad_gap(box_transit, 0, LV_PART_MAIN);
+  lv_obj_add_event_cb(box_transit, transit_cb, LV_EVENT_CLICKED, NULL);
+
+  // Bus section header
+  lbl_bus_header = lv_label_create(box_transit);
+  lv_label_set_text(lbl_bus_header, strings->bus_stop_label);
+  lv_obj_set_style_text_font(lbl_bus_header, get_font_14(), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_text_color(lbl_bus_header, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_align(lbl_bus_header, LV_ALIGN_TOP_LEFT, 0, 0);
+
+  // Bus arrival labels
+  for (int i = 0; i < 4; i++) {
+    lbl_bus_arrivals[i] = lv_label_create(box_transit);
+    lv_label_set_text(lbl_bus_arrivals[i], "");
+    lv_obj_set_style_text_font(lbl_bus_arrivals[i], get_font_12(), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(lbl_bus_arrivals[i], lv_color_hex(0xe4ffff), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_align(lbl_bus_arrivals[i], LV_ALIGN_TOP_LEFT, 0, 18 + i * 16);
+  }
+
+  // Tube section header
+  lbl_tube_header = lv_label_create(box_transit);
+  lv_label_set_text(lbl_tube_header, strings->tube_station_label);
+  lv_obj_set_style_text_font(lbl_tube_header, get_font_14(), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_text_color(lbl_tube_header, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_align(lbl_tube_header, LV_ALIGN_TOP_LEFT, 0, 88);
+
+  // Tube arrival labels
+  for (int i = 0; i < 4; i++) {
+    lbl_tube_arrivals[i] = lv_label_create(box_transit);
+    lv_label_set_text(lbl_tube_arrivals[i], "");
+    lv_obj_set_style_text_font(lbl_tube_arrivals[i], get_font_12(), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(lbl_tube_arrivals[i], lv_color_hex(0xe4ffff), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_align(lbl_tube_arrivals[i], LV_ALIGN_TOP_LEFT, 0, 106 + i * 16);
+  }
+
+  lv_obj_add_flag(box_transit, LV_OBJ_FLAG_HIDDEN);
+
   // Create clock label in the top-right corner
   lbl_clock = lv_label_create(scr);
   lv_obj_set_style_text_font(lbl_clock, get_font_14(), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -596,6 +687,21 @@ void daily_cb(lv_event_t *e) {
 void hourly_cb(lv_event_t *e) {
   const LocalizedStrings* strings = get_strings(current_language);
   lv_obj_add_flag(box_hourly, LV_OBJ_FLAG_HIDDEN);
+  
+  // If transit is enabled, show transit panel, otherwise go back to daily
+  if (transit_enabled) {
+    lv_label_set_text(lbl_forecast, strings->transit_title);
+    lv_obj_clear_flag(box_transit, LV_OBJ_FLAG_HIDDEN);
+    fetch_tfl_arrivals();  // Refresh transit data when viewing
+  } else {
+    lv_label_set_text(lbl_forecast, strings->seven_day_forecast);
+    lv_obj_clear_flag(box_daily, LV_OBJ_FLAG_HIDDEN);
+  }
+}
+
+void transit_cb(lv_event_t *e) {
+  const LocalizedStrings* strings = get_strings(current_language);
+  lv_obj_add_flag(box_transit, LV_OBJ_FLAG_HIDDEN);
   lv_label_set_text(lbl_forecast, strings->seven_day_forecast);
   lv_obj_clear_flag(box_daily, LV_OBJ_FLAG_HIDDEN);
 }
@@ -651,6 +757,117 @@ static void change_location_event_cb(lv_event_t *e) {
   if (location_win) return;
 
   create_location_dialog();
+}
+
+// Transit settings dialog callbacks
+static void transit_save_event_cb(lv_event_t *e) {
+  const char *bus_id = lv_textarea_get_text(bus_stop_ta);
+  const char *tube_id = lv_textarea_get_text(tube_station_ta);
+  
+  strncpy(bus_stop_id, bus_id, sizeof(bus_stop_id) - 1);
+  strncpy(tube_station_id, tube_id, sizeof(tube_station_id) - 1);
+  
+  prefs.putString("busStopId", bus_stop_id);
+  prefs.putString("tubeStationId", tube_station_id);
+  
+  transit_enabled = (strlen(bus_stop_id) > 0 || strlen(tube_station_id) > 0);
+  
+  Serial.print("Saved bus stop ID: ");
+  Serial.println(bus_stop_id);
+  Serial.print("Saved tube station ID: ");
+  Serial.println(tube_station_id);
+  
+  lv_obj_del(transit_settings_win);
+  transit_settings_win = nullptr;
+  
+  // Fetch transit data if enabled
+  if (transit_enabled) {
+    fetch_tfl_arrivals();
+  }
+}
+
+static void transit_cancel_event_cb(lv_event_t *e) {
+  lv_obj_del(transit_settings_win);
+  transit_settings_win = nullptr;
+}
+
+void create_transit_settings_dialog() {
+  if (transit_settings_win) return;
+  
+  const LocalizedStrings* strings = get_strings(current_language);
+  transit_settings_win = lv_win_create(lv_scr_act());
+  lv_obj_t *title = lv_win_add_title(transit_settings_win, strings->transit_settings);
+  lv_obj_t *header = lv_win_get_header(transit_settings_win);
+  lv_obj_set_style_height(header, 30, 0);
+  lv_obj_set_style_text_font(title, get_font_16(), 0);
+  lv_obj_set_style_margin_left(title, 10, 0);
+  lv_obj_set_size(transit_settings_win, 240, 320);
+  lv_obj_center(transit_settings_win);
+  
+  lv_obj_t *cont = lv_win_get_content(transit_settings_win);
+  
+  // Bus stop ID label
+  lv_obj_t *lbl_bus = lv_label_create(cont);
+  lv_label_set_text(lbl_bus, strings->bus_stop_id);
+  lv_obj_set_style_text_font(lbl_bus, get_font_12(), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_align(lbl_bus, LV_ALIGN_TOP_LEFT, 5, 10);
+  
+  // Bus stop ID text area
+  bus_stop_ta = lv_textarea_create(cont);
+  lv_textarea_set_one_line(bus_stop_ta, true);
+  lv_textarea_set_placeholder_text(bus_stop_ta, strings->stop_id_placeholder);
+  lv_textarea_set_text(bus_stop_ta, bus_stop_id);
+  lv_obj_set_width(bus_stop_ta, 200);
+  lv_obj_align(bus_stop_ta, LV_ALIGN_TOP_LEFT, 5, 30);
+  lv_obj_add_event_cb(bus_stop_ta, ta_event_cb, LV_EVENT_CLICKED, kb);
+  lv_obj_add_event_cb(bus_stop_ta, ta_defocus_cb, LV_EVENT_DEFOCUSED, kb);
+  
+  // Tube station ID label
+  lv_obj_t *lbl_tube = lv_label_create(cont);
+  lv_label_set_text(lbl_tube, strings->tube_station_id);
+  lv_obj_set_style_text_font(lbl_tube, get_font_12(), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_align(lbl_tube, LV_ALIGN_TOP_LEFT, 5, 70);
+  
+  // Tube station ID text area
+  tube_station_ta = lv_textarea_create(cont);
+  lv_textarea_set_one_line(tube_station_ta, true);
+  lv_textarea_set_placeholder_text(tube_station_ta, "e.g. 940GZZLUOXC");
+  lv_textarea_set_text(tube_station_ta, tube_station_id);
+  lv_obj_set_width(tube_station_ta, 200);
+  lv_obj_align(tube_station_ta, LV_ALIGN_TOP_LEFT, 5, 90);
+  lv_obj_add_event_cb(tube_station_ta, ta_event_cb, LV_EVENT_CLICKED, kb);
+  lv_obj_add_event_cb(tube_station_ta, ta_defocus_cb, LV_EVENT_DEFOCUSED, kb);
+  
+  // Help text
+  lv_obj_t *lbl_help = lv_label_create(cont);
+  lv_label_set_text(lbl_help, "Find stop IDs at tfl.gov.uk");
+  lv_obj_set_style_text_font(lbl_help, get_font_12(), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_text_color(lbl_help, lv_color_hex(0x666666), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_align(lbl_help, LV_ALIGN_TOP_LEFT, 5, 130);
+  
+  // Save button
+  lv_obj_t *btn_save = lv_btn_create(cont);
+  lv_obj_set_size(btn_save, 80, 40);
+  lv_obj_align(btn_save, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
+  lv_obj_set_style_bg_color(btn_save, lv_palette_main(LV_PALETTE_GREEN), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_bg_color(btn_save, lv_palette_darken(LV_PALETTE_GREEN, 1), LV_PART_MAIN | LV_STATE_PRESSED);
+  lv_obj_add_event_cb(btn_save, transit_save_event_cb, LV_EVENT_CLICKED, NULL);
+  
+  lv_obj_t *lbl_save = lv_label_create(btn_save);
+  lv_label_set_text(lbl_save, strings->save);
+  lv_obj_set_style_text_font(lbl_save, get_font_14(), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_center(lbl_save);
+  
+  // Cancel button
+  lv_obj_t *btn_cancel = lv_btn_create(cont);
+  lv_obj_set_size(btn_cancel, 80, 40);
+  lv_obj_align_to(btn_cancel, btn_save, LV_ALIGN_OUT_LEFT_MID, -5, 0);
+  lv_obj_add_event_cb(btn_cancel, transit_cancel_event_cb, LV_EVENT_CLICKED, NULL);
+  
+  lv_obj_t *lbl_cancel = lv_label_create(btn_cancel);
+  lv_label_set_text(lbl_cancel, strings->cancel);
+  lv_obj_set_style_text_font(lbl_cancel, get_font_14(), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_center(lbl_cancel);
 }
 
 void create_location_dialog() {
@@ -846,6 +1063,19 @@ void create_settings_window() {
   lv_obj_set_style_text_font(lbl_chg, get_font_12(), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_center(lbl_chg);
 
+  // Transit settings button (TfL)
+  lv_obj_t *btn_transit = lv_btn_create(cont);
+  lv_obj_set_size(btn_transit, 100, 40);
+  lv_obj_align_to(btn_transit, btn_change_loc, LV_ALIGN_OUT_RIGHT_MID, 12, 0);
+  lv_obj_set_style_bg_color(btn_transit, lv_color_hex(0x000099), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_bg_color(btn_transit, lv_color_hex(0x000066), LV_PART_MAIN | LV_STATE_PRESSED);
+  lv_obj_add_event_cb(btn_transit, [](lv_event_t *e) { create_transit_settings_dialog(); }, LV_EVENT_CLICKED, NULL);
+  
+  lv_obj_t *lbl_transit = lv_label_create(btn_transit);
+  lv_label_set_text(lbl_transit, "TfL");
+  lv_obj_set_style_text_font(lbl_transit, get_font_12(), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_center(lbl_transit);
+
   // Hidden keyboard object
   if (!kb) {
     kb = lv_keyboard_create(lv_scr_act());
@@ -861,7 +1091,7 @@ void create_settings_window() {
   lv_obj_set_style_bg_color(btn_reset, lv_palette_darken(LV_PALETTE_RED, 1), LV_PART_MAIN | LV_STATE_PRESSED);
   lv_obj_set_style_text_color(btn_reset, lv_color_white(), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_size(btn_reset, 100, 40);
-  lv_obj_align_to(btn_reset, btn_change_loc, LV_ALIGN_OUT_RIGHT_MID, 12, 0);
+  lv_obj_align_to(btn_reset, btn_change_loc, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 10);
 
   lv_obj_add_event_cb(btn_reset, reset_wifi_event_handler, LV_EVENT_CLICKED, nullptr);
 
@@ -1120,6 +1350,202 @@ void fetch_and_update_weather() {
     Serial.println("HTTP GET failed at " + url);
   }
   http.end();
+}
+
+// TfL API Functions
+void fetch_tfl_arrivals() {
+  if (strlen(bus_stop_id) > 0) {
+    fetch_bus_arrivals();
+  }
+  if (strlen(tube_station_id) > 0) {
+    fetch_tube_arrivals();
+  }
+  update_transit_display();
+}
+
+void fetch_bus_arrivals() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  
+  String url = String("https://api.tfl.gov.uk/StopPoint/") + bus_stop_id + "/Arrivals";
+  
+  HTTPClient http;
+  http.begin(url);
+  
+  if (http.GET() == HTTP_CODE_OK) {
+    Serial.println("Fetched bus arrivals from TfL: " + url);
+    
+    String payload = http.getString();
+    DynamicJsonDocument doc(8 * 1024);
+    
+    if (deserializeJson(doc, payload) == DeserializationError::Ok) {
+      JsonArray arrivals = doc.as<JsonArray>();
+      
+      // Sort arrivals by timeToStation and take first 4
+      // Simple bubble sort for small array
+      int count = min((int)arrivals.size(), 10);
+      int indices[10];
+      int times[10];
+      
+      for (int i = 0; i < count; i++) {
+        indices[i] = i;
+        times[i] = arrivals[i]["timeToStation"].as<int>();
+      }
+      
+      for (int i = 0; i < count - 1; i++) {
+        for (int j = 0; j < count - i - 1; j++) {
+          if (times[j] > times[j + 1]) {
+            int temp = times[j];
+            times[j] = times[j + 1];
+            times[j + 1] = temp;
+            temp = indices[j];
+            indices[j] = indices[j + 1];
+            indices[j + 1] = temp;
+          }
+        }
+      }
+      
+      bus_arrival_count = min(count, 4);
+      for (int i = 0; i < bus_arrival_count; i++) {
+        JsonObject arrival = arrivals[indices[i]];
+        strncpy(bus_arrivals[i].line, arrival["lineName"] | "?", sizeof(bus_arrivals[i].line) - 1);
+        strncpy(bus_arrivals[i].destination, arrival["destinationName"] | "?", sizeof(bus_arrivals[i].destination) - 1);
+        bus_arrivals[i].timeToStation = arrival["timeToStation"].as<int>();
+      }
+    } else {
+      Serial.println("JSON parse failed for bus arrivals");
+      bus_arrival_count = 0;
+    }
+  } else {
+    Serial.println("HTTP GET failed for bus arrivals: " + url);
+    bus_arrival_count = 0;
+  }
+  http.end();
+}
+
+void fetch_tube_arrivals() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  
+  String url = String("https://api.tfl.gov.uk/StopPoint/") + tube_station_id + "/Arrivals";
+  
+  HTTPClient http;
+  http.begin(url);
+  
+  if (http.GET() == HTTP_CODE_OK) {
+    Serial.println("Fetched tube arrivals from TfL: " + url);
+    
+    String payload = http.getString();
+    DynamicJsonDocument doc(16 * 1024);
+    
+    if (deserializeJson(doc, payload) == DeserializationError::Ok) {
+      JsonArray arrivals = doc.as<JsonArray>();
+      
+      // Sort arrivals by timeToStation and take first 4
+      int count = min((int)arrivals.size(), 10);
+      int indices[10];
+      int times[10];
+      
+      for (int i = 0; i < count; i++) {
+        indices[i] = i;
+        times[i] = arrivals[i]["timeToStation"].as<int>();
+      }
+      
+      for (int i = 0; i < count - 1; i++) {
+        for (int j = 0; j < count - i - 1; j++) {
+          if (times[j] > times[j + 1]) {
+            int temp = times[j];
+            times[j] = times[j + 1];
+            times[j + 1] = temp;
+            temp = indices[j];
+            indices[j] = indices[j + 1];
+            indices[j + 1] = temp;
+          }
+        }
+      }
+      
+      tube_arrival_count = min(count, 4);
+      for (int i = 0; i < tube_arrival_count; i++) {
+        JsonObject arrival = arrivals[indices[i]];
+        strncpy(tube_arrivals[i].line, arrival["lineName"] | "?", sizeof(tube_arrivals[i].line) - 1);
+        strncpy(tube_arrivals[i].destination, arrival["towards"] | arrival["destinationName"] | "?", sizeof(tube_arrivals[i].destination) - 1);
+        tube_arrivals[i].timeToStation = arrival["timeToStation"].as<int>();
+      }
+    } else {
+      Serial.println("JSON parse failed for tube arrivals");
+      tube_arrival_count = 0;
+    }
+  } else {
+    Serial.println("HTTP GET failed for tube arrivals: " + url);
+    tube_arrival_count = 0;
+  }
+  http.end();
+}
+
+void update_transit_display() {
+  const LocalizedStrings* strings = get_strings(current_language);
+  
+  // Update bus arrivals display
+  for (int i = 0; i < 4; i++) {
+    if (i < bus_arrival_count) {
+      int mins = bus_arrivals[i].timeToStation / 60;
+      char buf[64];
+      if (mins <= 0) {
+        snprintf(buf, sizeof(buf), "%s → %s: %s", 
+                 bus_arrivals[i].line, 
+                 bus_arrivals[i].destination,
+                 strings->due);
+      } else {
+        snprintf(buf, sizeof(buf), "%s → %s: %d %s", 
+                 bus_arrivals[i].line, 
+                 bus_arrivals[i].destination,
+                 mins,
+                 strings->mins);
+      }
+      // Truncate if too long for display
+      if (strlen(buf) > 35) {
+        buf[32] = '.';
+        buf[33] = '.';
+        buf[34] = '.';
+        buf[35] = '\0';
+      }
+      lv_label_set_text(lbl_bus_arrivals[i], buf);
+    } else if (i == 0 && bus_arrival_count == 0 && strlen(bus_stop_id) > 0) {
+      lv_label_set_text(lbl_bus_arrivals[i], strings->no_arrivals);
+    } else {
+      lv_label_set_text(lbl_bus_arrivals[i], "");
+    }
+  }
+  
+  // Update tube arrivals display
+  for (int i = 0; i < 4; i++) {
+    if (i < tube_arrival_count) {
+      int mins = tube_arrivals[i].timeToStation / 60;
+      char buf[64];
+      if (mins <= 0) {
+        snprintf(buf, sizeof(buf), "%s → %s: %s", 
+                 tube_arrivals[i].line, 
+                 tube_arrivals[i].destination,
+                 strings->due);
+      } else {
+        snprintf(buf, sizeof(buf), "%s → %s: %d %s", 
+                 tube_arrivals[i].line, 
+                 tube_arrivals[i].destination,
+                 mins,
+                 strings->mins);
+      }
+      // Truncate if too long for display
+      if (strlen(buf) > 35) {
+        buf[32] = '.';
+        buf[33] = '.';
+        buf[34] = '.';
+        buf[35] = '\0';
+      }
+      lv_label_set_text(lbl_tube_arrivals[i], buf);
+    } else if (i == 0 && tube_arrival_count == 0 && strlen(tube_station_id) > 0) {
+      lv_label_set_text(lbl_tube_arrivals[i], strings->no_arrivals);
+    } else {
+      lv_label_set_text(lbl_tube_arrivals[i], "");
+    }
+  }
 }
 
 const lv_img_dsc_t* choose_image(int code, int is_day) {
