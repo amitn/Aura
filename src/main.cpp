@@ -190,11 +190,11 @@ static lv_obj_t *lbl_tube_header;
 static lv_obj_t *lbl_bus_arrivals[4];
 static lv_obj_t *lbl_tube_arrivals[4];
 static lv_obj_t *transit_settings_win = nullptr;
-static lv_obj_t *bus_stop_ta[MAX_BUS_STOPS];
-static lv_obj_t *tube_station_ta;
 
 // Transit preferences
 #define MAX_BUS_STOPS 3
+static lv_obj_t *bus_stop_ta[MAX_BUS_STOPS];
+static lv_obj_t *tube_station_ta;
 static char bus_stop_ids[MAX_BUS_STOPS][32] = {"", "", ""};
 static char tube_station_id[32] = "";
 static bool transit_enabled = false;
