@@ -1802,16 +1802,16 @@ void update_transit_display() {
       int mins = bus_arrivals[i].timeToStation / 60;
       char buf[64];
       if (mins <= 0) {
-        snprintf(buf, sizeof(buf), "%s → %s: %s", 
-                 bus_arrivals[i].line, 
-                 bus_arrivals[i].destination,
-                 strings->due);
+        snprintf(buf, sizeof(buf), "%s %s → %s",
+                 bus_arrivals[i].line,
+                 strings->due,
+                 bus_arrivals[i].destination);
       } else {
-        snprintf(buf, sizeof(buf), "%s → %s: %d %s", 
-                 bus_arrivals[i].line, 
-                 bus_arrivals[i].destination,
+        snprintf(buf, sizeof(buf), "%s %d%s → %s",
+                 bus_arrivals[i].line,
                  mins,
-                 strings->mins);
+                 strings->mins,
+                 bus_arrivals[i].destination);
       }
       // Truncate if too long for display
       if (strlen(buf) > 35) {
@@ -1834,16 +1834,16 @@ void update_transit_display() {
       int mins = tube_arrivals[i].timeToStation / 60;
       char buf[64];
       if (mins <= 0) {
-        snprintf(buf, sizeof(buf), "%s → %s: %s", 
-                 tube_arrivals[i].line, 
-                 tube_arrivals[i].destination,
-                 strings->due);
+        snprintf(buf, sizeof(buf), "%s %s → %s",
+                 tube_arrivals[i].line,
+                 strings->due,
+                 tube_arrivals[i].destination);
       } else {
-        snprintf(buf, sizeof(buf), "%s → %s: %d %s", 
-                 tube_arrivals[i].line, 
-                 tube_arrivals[i].destination,
+        snprintf(buf, sizeof(buf), "%s %d%s → %s",
+                 tube_arrivals[i].line,
                  mins,
-                 strings->mins);
+                 strings->mins,
+                 tube_arrivals[i].destination);
       }
       // Truncate if too long for display
       if (strlen(buf) > 35) {
