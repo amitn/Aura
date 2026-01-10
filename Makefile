@@ -1,7 +1,7 @@
 # Makefile for Aura - ESP32 Weather Widget
 # Wraps PlatformIO commands for convenience
 
-.PHONY: all build upload monitor clean fullclean compile_commands help
+.PHONY: all build upload monitor clean fullclean sync compile_commands help
 
 # Default target
 all: build
@@ -31,6 +31,10 @@ clean:
 # Full clean (remove .pio directory)
 fullclean:
 	rm -rf .pio
+
+# Sync Python/uv dependencies
+sync:
+	uv sync
 
 # Generate compile_commands.json for IDE support
 compile_commands:
@@ -66,6 +70,7 @@ help:
 	@echo "  run            Build, upload, and monitor"
 	@echo "  clean          Clean build files"
 	@echo "  fullclean      Remove .pio directory entirely"
+	@echo "  sync           Sync Python/uv dependencies"
 	@echo "  compile_commands  Generate compile_commands.json"
 	@echo "  update         Update library dependencies"
 	@echo "  devices        List connected devices"
