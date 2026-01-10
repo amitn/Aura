@@ -140,7 +140,7 @@
      * and can't be drawn in chunks. */
 
     /*The target buffer size for simple layer chunks.*/
-    #define LV_DRAW_SW_LAYER_SIMPLE_BUF_SIZE    (24 * 1024)   /*[bytes]*/
+    #define LV_DRAW_SW_LAYER_SIMPLE_BUF_SIZE    (8 * 1024)   /*[bytes] Reduced for simple UI*/
 
     /* 0: use a simple renderer capable of drawing only simple rectangles with gradient, images, texts, and straight lines only
      * 1: use a complex renderer capable of drawing rounded corners, shadow, skew lines, and arcs too */
@@ -217,7 +217,7 @@
  *-----------*/
 
 /*Enable the log module*/
-#define LV_USE_LOG 1
+#define LV_USE_LOG 0  /* Disabled for production to save space */
 #if LV_USE_LOG
 
     /*How important log should be added:
@@ -227,7 +227,7 @@
     *LV_LOG_LEVEL_ERROR       Only critical issue, when the system may fail
     *LV_LOG_LEVEL_USER        Only logs added by the user
     *LV_LOG_LEVEL_NONE        Do not log anything*/
-    #define LV_LOG_LEVEL LV_LOG_LEVEL_WARN
+    #define LV_LOG_LEVEL LV_LOG_LEVEL_ERROR
 
     /*1: Print the log with 'printf';
     *0: User need to register a callback with `lv_log_register_print_cb()`*/
@@ -235,22 +235,22 @@
 
     /*1: Enable print timestamp;
      *0: Disable print timestamp*/
-    #define LV_LOG_USE_TIMESTAMP 1
+    #define LV_LOG_USE_TIMESTAMP 0
 
     /*1: Print file and line number of the log;
      *0: Do not print file and line number of the log*/
-    #define LV_LOG_USE_FILE_LINE 1
+    #define LV_LOG_USE_FILE_LINE 0
 
     /*Enable/disable LV_LOG_TRACE in modules that produces a huge number of logs*/
-    #define LV_LOG_TRACE_MEM        1
-    #define LV_LOG_TRACE_TIMER      1
-    #define LV_LOG_TRACE_INDEV      1
-    #define LV_LOG_TRACE_DISP_REFR  1
-    #define LV_LOG_TRACE_EVENT      1
-    #define LV_LOG_TRACE_OBJ_CREATE 1
-    #define LV_LOG_TRACE_LAYOUT     1
-    #define LV_LOG_TRACE_ANIM       1
-    #define LV_LOG_TRACE_CACHE      1
+    #define LV_LOG_TRACE_MEM        0
+    #define LV_LOG_TRACE_TIMER      0
+    #define LV_LOG_TRACE_INDEV      0
+    #define LV_LOG_TRACE_DISP_REFR  0
+    #define LV_LOG_TRACE_EVENT      0
+    #define LV_LOG_TRACE_OBJ_CREATE 0
+    #define LV_LOG_TRACE_LAYOUT     0
+    #define LV_LOG_TRACE_ANIM       0
+    #define LV_LOG_TRACE_CACHE      0
 
 #endif  /*LV_USE_LOG*/
 
@@ -388,7 +388,7 @@
 #define LV_USE_FLOAT            0
 
 /*Include `lvgl_private.h` in `lvgl.h` to access internal data and functions by default*/
-#define LV_USE_PRIVATE_API		1
+#define LV_USE_PRIVATE_API		0  /* Not needed */
 
 /*==================
  *   FONT USAGE
@@ -396,27 +396,28 @@
 
 /*Montserrat fonts with ASCII range and some symbols using bpp = 4
  *https://fonts.google.com/specimen/Montserrat*/
-#define LV_FONT_MONTSERRAT_8  1
-#define LV_FONT_MONTSERRAT_10 1
-#define LV_FONT_MONTSERRAT_12 1
-#define LV_FONT_MONTSERRAT_14 1
-#define LV_FONT_MONTSERRAT_16 1
-#define LV_FONT_MONTSERRAT_18 1
-#define LV_FONT_MONTSERRAT_20 1
-#define LV_FONT_MONTSERRAT_22 1
-#define LV_FONT_MONTSERRAT_24 1
-#define LV_FONT_MONTSERRAT_26 1
-#define LV_FONT_MONTSERRAT_28 1
-#define LV_FONT_MONTSERRAT_30 1
-#define LV_FONT_MONTSERRAT_32 1
-#define LV_FONT_MONTSERRAT_34 1
-#define LV_FONT_MONTSERRAT_36 1
-#define LV_FONT_MONTSERRAT_38 1
-#define LV_FONT_MONTSERRAT_40 1
-#define LV_FONT_MONTSERRAT_42 1
-#define LV_FONT_MONTSERRAT_44 1
-#define LV_FONT_MONTSERRAT_46 1
-#define LV_FONT_MONTSERRAT_48 1
+/* Only enable fonts needed as fallbacks for custom Latin fonts */
+#define LV_FONT_MONTSERRAT_8  0
+#define LV_FONT_MONTSERRAT_10 0
+#define LV_FONT_MONTSERRAT_12 1  /* Fallback for lv_font_montserrat_latin_12 */
+#define LV_FONT_MONTSERRAT_14 1  /* Fallback for lv_font_montserrat_latin_14 + default */
+#define LV_FONT_MONTSERRAT_16 1  /* Fallback for lv_font_montserrat_latin_16 */
+#define LV_FONT_MONTSERRAT_18 0
+#define LV_FONT_MONTSERRAT_20 1  /* Fallback for lv_font_montserrat_latin_20 */
+#define LV_FONT_MONTSERRAT_22 0
+#define LV_FONT_MONTSERRAT_24 0
+#define LV_FONT_MONTSERRAT_26 0
+#define LV_FONT_MONTSERRAT_28 0
+#define LV_FONT_MONTSERRAT_30 0
+#define LV_FONT_MONTSERRAT_32 0
+#define LV_FONT_MONTSERRAT_34 0
+#define LV_FONT_MONTSERRAT_36 0
+#define LV_FONT_MONTSERRAT_38 0
+#define LV_FONT_MONTSERRAT_40 0
+#define LV_FONT_MONTSERRAT_42 1  /* Fallback for lv_font_montserrat_latin_42 */
+#define LV_FONT_MONTSERRAT_44 0
+#define LV_FONT_MONTSERRAT_46 0
+#define LV_FONT_MONTSERRAT_48 0
 
 /*Demonstrate special features*/
 #define LV_FONT_MONTSERRAT_28_COMPRESSED 0  /*bpp = 3*/
@@ -444,7 +445,7 @@
 #define LV_USE_FONT_COMPRESSED 0
 
 /*Enable drawing placeholders when glyph dsc is not found*/
-#define LV_USE_FONT_PLACEHOLDER 1
+#define LV_USE_FONT_PLACEHOLDER 0  /* Not needed for production */
 
 /*=================
  *  TEXT SETTINGS
@@ -497,17 +498,18 @@
 
 #define LV_WIDGETS_HAS_DEFAULT_VALUE  1
 
-#define LV_USE_ANIMIMG    1
+/* WIDGETS - Only enable what the app actually uses */
+#define LV_USE_ANIMIMG    0  /* Not used */
 
-#define LV_USE_ARC        1
+#define LV_USE_ARC        0  /* Not used */
 
-#define LV_USE_BAR        1
+#define LV_USE_BAR        1  /* Required by slider */
 
-#define LV_USE_BUTTON        1
+#define LV_USE_BUTTON        1  /* Used */
 
-#define LV_USE_BUTTONMATRIX  1
+#define LV_USE_BUTTONMATRIX  1  /* Required by keyboard */
 
-#define LV_USE_CALENDAR   1
+#define LV_USE_CALENDAR   0  /* Not used */
 #if LV_USE_CALENDAR
     #define LV_CALENDAR_WEEK_STARTS_MONDAY 0
     #if LV_CALENDAR_WEEK_STARTS_MONDAY
@@ -521,67 +523,67 @@
     #define LV_USE_CALENDAR_HEADER_DROPDOWN 1
 #endif  /*LV_USE_CALENDAR*/
 
-#define LV_USE_CANVAS     1
+#define LV_USE_CANVAS     0  /* Not used */
 
-#define LV_USE_CHART      1
+#define LV_USE_CHART      0  /* Not used */
 
-#define LV_USE_CHECKBOX   1
+#define LV_USE_CHECKBOX   0  /* Not used */
 
-#define LV_USE_DROPDOWN   1   /*Requires: lv_label*/
+#define LV_USE_DROPDOWN   1   /*Requires: lv_label - Used */
 
-#define LV_USE_IMAGE      1   /*Requires: lv_label*/
+#define LV_USE_IMAGE      1   /*Requires: lv_label - Used */
 
-#define LV_USE_IMAGEBUTTON     1
+#define LV_USE_IMAGEBUTTON     0  /* Not used */
 
-#define LV_USE_KEYBOARD   1
+#define LV_USE_KEYBOARD   1  /* Used */
 
-#define LV_USE_LABEL      1
+#define LV_USE_LABEL      1  /* Used */
 #if LV_USE_LABEL
-    #define LV_LABEL_TEXT_SELECTION 1 /*Enable selecting text of the label*/
-    #define LV_LABEL_LONG_TXT_HINT 1  /*Store some extra info in labels to speed up drawing of very long texts*/
+    #define LV_LABEL_TEXT_SELECTION 0 /*Not needed - disable to save space*/
+    #define LV_LABEL_LONG_TXT_HINT 0  /*Not needed for short labels*/
     #define LV_LABEL_WAIT_CHAR_COUNT 3  /*The count of wait chart*/
 #endif
 
-#define LV_USE_LED        1
+#define LV_USE_LED        0  /* Not used */
 
-#define LV_USE_LINE       1
+#define LV_USE_LINE       0  /* Not used */
 
-#define LV_USE_LIST       1
+#define LV_USE_LIST       0  /* Not used */
 
-#define LV_USE_MENU       1
+#define LV_USE_MENU       0  /* Not used */
 
-#define LV_USE_MSGBOX     1
+#define LV_USE_MSGBOX     1  /* Used */
 
-#define LV_USE_ROLLER     1   /*Requires: lv_label*/
+#define LV_USE_ROLLER     0  /* Not used */
 
-#define LV_USE_SCALE      1
+#define LV_USE_SCALE      0  /* Not used */
 
-#define LV_USE_SLIDER     1   /*Requires: lv_bar*/
+#define LV_USE_SLIDER     1   /*Requires: lv_bar - Used */
 
-#define LV_USE_SPAN       1
+#define LV_USE_SPAN       0  /* Not used */
 #if LV_USE_SPAN
     /*A line text can contain maximum num of span descriptor */
     #define LV_SPAN_SNIPPET_STACK_SIZE 64
 #endif
 
-#define LV_USE_SPINBOX    1
+#define LV_USE_SPINBOX    0  /* Not used */
 
-#define LV_USE_SPINNER    1
+#define LV_USE_SPINNER    0  /* Not used */
 
-#define LV_USE_SWITCH     1
+#define LV_USE_SWITCH     1  /* Used */
 
-#define LV_USE_TEXTAREA   1   /*Requires: lv_label*/
+#define LV_USE_TEXTAREA   1   /*Requires: lv_label - Used */
 #if LV_USE_TEXTAREA != 0
     #define LV_TEXTAREA_DEF_PWD_SHOW_TIME 1500    /*ms*/
 #endif
 
-#define LV_USE_TABLE      1
+#define LV_USE_TABLE      0  /* Not used */
 
-#define LV_USE_TABVIEW    1
+#define LV_USE_TABVIEW    0  /* Not used */
 
-#define LV_USE_TILEVIEW   1
+#define LV_USE_TILEVIEW   0  /* Not used */
 
-#define LV_USE_WIN        1
+#define LV_USE_WIN        1  /* Used */
 
 /*==================
  * THEMES
@@ -595,27 +597,27 @@
     #define LV_THEME_DEFAULT_DARK 0
 
     /*1: Enable grow on press*/
-    #define LV_THEME_DEFAULT_GROW 1
+    #define LV_THEME_DEFAULT_GROW 0  /* Disabled to save space */
 
     /*Default transition time in [ms]*/
     #define LV_THEME_DEFAULT_TRANSITION_TIME 80
 #endif /*LV_USE_THEME_DEFAULT*/
 
 /*A very simple theme that is a good starting point for a custom theme*/
-#define LV_USE_THEME_SIMPLE 1
+#define LV_USE_THEME_SIMPLE 0  /* Not used */
 
 /*A theme designed for monochrome displays*/
-#define LV_USE_THEME_MONO 1
+#define LV_USE_THEME_MONO 0  /* Not used */
 
 /*==================
  * LAYOUTS
  *==================*/
 
 /*A layout similar to Flexbox in CSS.*/
-#define LV_USE_FLEX 1
+#define LV_USE_FLEX 1  /* Required by lv_msgbox */
 
 /*A layout similar to Grid in CSS.*/
-#define LV_USE_GRID 1
+#define LV_USE_GRID 0  /* Not used */
 
 /*====================
  * 3RD PARTS LIBRARIES
@@ -821,7 +823,7 @@
 #define LV_USE_IMGFONT 0
 
 /*1: Enable an observer pattern implementation*/
-#define LV_USE_OBSERVER 1
+#define LV_USE_OBSERVER 0  /* Not used */
 
 /*1: Enable Pinyin input method*/
 /*Requires: lv_keyboard*/
@@ -932,7 +934,7 @@
 *==================*/
 
 /*Enable the examples to be built with the library*/
-#define LV_BUILD_EXAMPLES 1
+#define LV_BUILD_EXAMPLES 0  /* Disabled to save space */
 
 /*===================
  * DEMO USAGE
