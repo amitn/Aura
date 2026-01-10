@@ -61,4 +61,14 @@
 
 #define CONFIG_LANGUAGE LANG_EN
 
+// =============================================================================
+// OTA (Over-The-Air) Update Configuration (Optional)
+// =============================================================================
+// Configure wireless firmware updates. After initial USB flash, you can update
+// the firmware over WiFi using PlatformIO: pio run --target upload --upload-port aura.local
+// Or Arduino IDE: Tools > Port > aura at <IP address>
+
+#define CONFIG_OTA_HOSTNAME "aura"  // mDNS hostname (aura.local)
+#define CONFIG_OTA_PASSWORD ""      // Leave empty for no password, or set for security
+
 #endif // CONFIG_H

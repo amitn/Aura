@@ -2,6 +2,7 @@
 #include <WiFiManager.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <ArduinoOTA.h>
 #include <time.h>
 #include <lvgl.h>
 #include <TFT_eSPI.h>
@@ -67,6 +68,12 @@
 #endif
 #ifndef CONFIG_AUTO_ROTATE_INTERVAL
 #define CONFIG_AUTO_ROTATE_INTERVAL 10000
+#endif
+#ifndef CONFIG_OTA_HOSTNAME
+#define CONFIG_OTA_HOSTNAME "aura"
+#endif
+#ifndef CONFIG_OTA_PASSWORD
+#define CONFIG_OTA_PASSWORD ""
 #endif
 
 #define XPT2046_IRQ 36   // T_IRQ
@@ -528,6 +535,37 @@ void setup() {
   wm.autoConnect(DEFAULT_CAPTIVE_SSID);
   #endif
 
+  // Setup OTA updates
+  ArduinoOTA.setHostname(CONFIG_OTA_HOSTNAME);
+  if (strlen(CONFIG_OTA_PASSWORD) > 0) {
+    ArduinoOTA.setPassword(CONFIG_OTA_PASSWORD);
+  }
+  
+  ArduinoOTA.onStart([]() {
+    String type = (ArduinoOTA.getCommand() == U_FLASH) ? "firmware" : "filesystem";
+    Serial.println("OTA update starting: " + type);
+  });
+  
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nOTA update complete!");
+  });
+  
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("OTA Progress: %u%%\r", (progress / (total / 100)));
+  });
+  
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("OTA Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+    else if (error == OTA_END_ERROR) Serial.println("End Failed");
+  });
+  
+  ArduinoOTA.begin();
+  Serial.println("OTA ready. Hostname: " + String(CONFIG_OTA_HOSTNAME));
+
   lv_timer_create(update_clock, 1000, NULL);
 
   lv_obj_clean(lv_scr_act());
@@ -549,6 +587,7 @@ void apModeCallback(WiFiManager *mgr) {
 }
 
 void loop() {
+  ArduinoOTA.handle();
   lv_timer_handler();
   static uint32_t last = millis();
 

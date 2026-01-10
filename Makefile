@@ -1,7 +1,7 @@
 # Makefile for Aura - ESP32 Weather Widget
 # Wraps PlatformIO commands for convenience
 
-.PHONY: all build upload monitor clean fullclean sync compile_commands config images help
+.PHONY: all build upload upload-ota monitor clean fullclean sync compile_commands config images help
 
 # Default target
 all: build
@@ -10,9 +10,13 @@ all: build
 build:
 	pio run
 
-# Upload firmware to device
+# Upload firmware to device (USB)
 upload:
 	pio run --target upload
+
+# Upload firmware over-the-air (WiFi)
+upload-ota:
+	pio run --target upload -e ota
 
 # Open serial monitor
 monitor:
@@ -81,7 +85,8 @@ help:
 	@echo ""
 	@echo "Targets:"
 	@echo "  build          Build the project (default)"
-	@echo "  upload         Upload firmware to device"
+	@echo "  upload         Upload firmware via USB"
+	@echo "  upload-ota     Upload firmware via WiFi (OTA)"
 	@echo "  monitor        Open serial monitor"
 	@echo "  flash          Build and upload"
 	@echo "  run            Build, upload, and monitor"

@@ -33,6 +33,11 @@ A beautiful, feature-rich weather widget for ESP32-2432S028R (CYD - Cheap Yellow
 - **Night Mode** - Automatic screen dimming (10pm - 6am)
 - **Brightness Control** - Adjustable backlight intensity
 
+### Over-The-Air Updates
+- **WiFi Updates** - Update firmware without USB after initial flash
+- **mDNS Discovery** - Device accessible as `aura.local` on your network
+- **Optional Password** - Secure OTA updates with authentication
+
 ---
 
 ## 🛠 Hardware Requirements
@@ -83,7 +88,8 @@ For convenience, a Makefile wraps common commands:
 ```bash
 make config         # Create/edit config.h from template
 make build          # Build the project
-make upload         # Upload firmware to device
+make upload         # Upload firmware via USB
+make upload-ota     # Upload firmware via WiFi (OTA)
 make monitor        # Open serial monitor
 make flash          # Build and upload
 make run            # Build, upload, and monitor
@@ -224,6 +230,36 @@ nano include/config.h
 5. Tap **Save**
 
 > 💡 Find stop IDs at [tfl.gov.uk](https://tfl.gov.uk) - search for your stop and look for the ID in the URL or stop details.
+
+### OTA (Over-The-Air) Updates
+
+After the initial USB flash, you can update the firmware wirelessly over WiFi:
+
+```bash
+# Using make
+make upload-ota
+
+# Or using PlatformIO directly
+pio run --target upload -e ota
+```
+
+**Requirements:**
+- Device must be connected to your WiFi network
+- Your computer must be on the same network
+- mDNS must work on your network (most home networks support this)
+
+**Optional: Secure OTA with password**
+
+Edit `config.h` to set an OTA password:
+```c
+#define CONFIG_OTA_PASSWORD "your_secret_password"
+```
+
+Then update `platformio.ini` to include the password:
+```ini
+[env:ota]
+upload_flags = --auth=your_secret_password
+```
 
 ---
 
