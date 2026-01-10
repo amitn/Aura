@@ -46,6 +46,9 @@ struct LocalizedStrings {
   const char* bus_stop_id;
   const char* tube_station_id;
   const char* stop_id_placeholder;
+  // Sunrise/sunset strings
+  const char* sunrise;
+  const char* sunset;
 };
 
 #define DEFAULT_CAPTIVE_SSID "Aura"
@@ -79,7 +82,9 @@ static const LocalizedStrings strings_en = {
   "Dim screen at night",
   // Transit strings
   "TFL ARRIVALS", "Bus", "Underground", "No arrivals", "min", "Due",
-  "Transit Settings", "Bus Stop ID:", "Tube Station:", "e.g. 490008660N"
+  "Transit Settings", "Bus Stop ID:", "Tube Station:", "e.g. 490008660N",
+  // Sunrise/sunset strings
+  "Sunrise", "Sunset"
 };
 
 static const LocalizedStrings strings_es = {
@@ -113,7 +118,9 @@ static const LocalizedStrings strings_es = {
   "Pantalla noche",
   // Transit strings
   "LLEGADAS TFL", "Bus", "Metro", "Sin llegadas", "min", "Ahora",
-  "Config. Transporte", "ID Parada Bus:", "Estación Metro:", "ej. 490008660N"
+  "Config. Transporte", "ID Parada Bus:", "Estación Metro:", "ej. 490008660N",
+  // Sunrise/sunset strings
+  "Amanecer", "Atardecer"
 };
 
 static const LocalizedStrings strings_de = {
@@ -149,7 +156,9 @@ static const LocalizedStrings strings_de = {
   "Nacht-Dimmen",
   // Transit strings
   "TFL ANKÜNFTE", "Bus", "U-Bahn", "Keine Ankünfte", "Min", "Jetzt",
-  "Verkehr Einst.", "Bus Haltestelle:", "U-Bahn Station:", "z.B. 490008660N"
+  "Verkehr Einst.", "Bus Haltestelle:", "U-Bahn Station:", "z.B. 490008660N",
+  // Sunrise/sunset strings
+  "Sonnenaufgang", "Sonnenuntergang"
 };
 
 static const LocalizedStrings strings_fr = {
@@ -185,7 +194,9 @@ static const LocalizedStrings strings_fr = {
   "Nuit écran",
   // Transit strings
   "ARRIVÉES TFL", "Bus", "Métro", "Aucune arrivée", "min", "Imminent",
-  "Param. Transport", "ID Arrêt Bus:", "Station Métro:", "ex. 490008660N"
+  "Param. Transport", "ID Arrêt Bus:", "Station Métro:", "ex. 490008660N",
+  // Sunrise/sunset strings
+  "Lever", "Coucher"
 };
 
 static const LocalizedStrings strings_tr = {
@@ -218,7 +229,9 @@ static const LocalizedStrings strings_tr = {
   "Gece kısık",
   // Transit strings
   "TFL VARIŞLAR", "Otobüs", "Metro", "Variş yok", "dk", "Şimdi",
-  "Ulaşım Ayarlari", "Otobüs Duragi:", "Metro İstasyonu:", "örn. 490008660N"
+  "Ulaşım Ayarlari", "Otobüs Duragi:", "Metro İstasyonu:", "örn. 490008660N",
+  // Sunrise/sunset strings
+  "Gündoğumu", "Günbatımı"
 };
 
 static const LocalizedStrings strings_sv = {
@@ -255,7 +268,9 @@ static const LocalizedStrings strings_sv = {
   "Nattdämpning",
   // Transit strings
   "TFL ANKOMSTER", "Buss", "Tunnelbana", "Inga ankomster", "min", "Nu",
-  "Trafikinst.", "Busshållplats:", "T-banestation:", "t.ex. 490008660N"
+  "Trafikinst.", "Busshållplats:", "T-banestation:", "t.ex. 490008660N",
+  // Sunrise/sunset strings
+  "Soluppgång", "Solnedgång"
 };
 
 static const LocalizedStrings strings_it = {
@@ -287,7 +302,9 @@ static const LocalizedStrings strings_it = {
   "Schermo notte",
   // Transit strings
   "ARRIVI TFL", "Bus", "Metro", "Nessun arrivo", "min", "In arrivo",
-  "Impost. Trasporti", "ID Fermata Bus:", "Stazione Metro:", "es. 490008660N"
+  "Impost. Trasporti", "ID Fermata Bus:", "Stazione Metro:", "es. 490008660N",
+  // Sunrise/sunset strings
+  "Alba", "Tramonto"
 };
 
 static const LocalizedStrings* get_strings(Language current_language) {

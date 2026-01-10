@@ -84,6 +84,8 @@ static lv_timer_t *temp_screen_wakeup_timer = nullptr;
 // UI components
 static lv_obj_t *lbl_today_temp;
 static lv_obj_t *lbl_today_feels_like;
+static lv_obj_t *lbl_sunrise;
+static lv_obj_t *lbl_sunset;
 static lv_obj_t *img_today_icon;
 static lv_obj_t *lbl_forecast;
 static lv_obj_t *box_daily;
@@ -489,6 +491,19 @@ void create_ui() {
   lv_obj_set_style_text_font(lbl_today_feels_like, get_font_14(), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_color(lbl_today_feels_like, lv_color_hex(0xe4ffff), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_align(lbl_today_feels_like, LV_ALIGN_TOP_MID, 45, 75);
+
+  // Sunrise and sunset labels
+  lbl_sunrise = lv_label_create(scr);
+  lv_label_set_text(lbl_sunrise, "");
+  lv_obj_set_style_text_font(lbl_sunrise, get_font_12(), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_text_color(lbl_sunrise, lv_color_hex(0xffd700), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_align(lbl_sunrise, LV_ALIGN_TOP_LEFT, 10, 95);
+
+  lbl_sunset = lv_label_create(scr);
+  lv_label_set_text(lbl_sunset, "");
+  lv_obj_set_style_text_font(lbl_sunset, get_font_12(), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_text_color(lbl_sunset, lv_color_hex(0xff6b35), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_align(lbl_sunset, LV_ALIGN_TOP_RIGHT, -10, 95);
 
   lbl_forecast = lv_label_create(scr);
   lv_label_set_text(lbl_forecast, strings->seven_day_forecast);
@@ -1266,7 +1281,7 @@ void fetch_and_update_weather() {
   String url = String("http://api.open-meteo.com/v1/forecast?latitude=")
                + latitude + "&longitude=" + longitude
                + "&current=temperature_2m,apparent_temperature,is_day,weather_code"
-               + "&daily=temperature_2m_min,temperature_2m_max,weather_code"
+               + "&daily=temperature_2m_min,temperature_2m_max,weather_code,sunrise,sunset"
                + "&hourly=temperature_2m,precipitation_probability,is_day,weather_code"
                + "&forecast_hours=7"
                + "&timezone=auto";
@@ -1306,6 +1321,42 @@ void fetch_and_update_weather() {
       JsonArray tmin = doc["daily"]["temperature_2m_min"].as<JsonArray>();
       JsonArray tmax = doc["daily"]["temperature_2m_max"].as<JsonArray>();
       JsonArray weather_codes = doc["daily"]["weather_code"].as<JsonArray>();
+      JsonArray sunrises = doc["daily"]["sunrise"].as<JsonArray>();
+      JsonArray sunsets = doc["daily"]["sunset"].as<JsonArray>();
+
+      // Display today's sunrise and sunset times
+      if (sunrises.size() > 0 && sunsets.size() > 0) {
+        const char *sunrise_str = sunrises[0].as<const char*>();
+        const char *sunset_str = sunsets[0].as<const char*>();
+        
+        // Parse time from ISO8601 format "YYYY-MM-DDTHH:MM"
+        int sunrise_hour = atoi(sunrise_str + 11);
+        int sunrise_min = atoi(sunrise_str + 14);
+        int sunset_hour = atoi(sunset_str + 11);
+        int sunset_min = atoi(sunset_str + 14);
+        
+        char sunrise_buf[32];
+        char sunset_buf[32];
+        
+        if (use_24_hour) {
+          snprintf(sunrise_buf, sizeof(sunrise_buf), "%s %02d:%02d", strings->sunrise, sunrise_hour, sunrise_min);
+          snprintf(sunset_buf, sizeof(sunset_buf), "%s %02d:%02d", strings->sunset, sunset_hour, sunset_min);
+        } else {
+          int sr_h = sunrise_hour % 12;
+          if (sr_h == 0) sr_h = 12;
+          const char *sr_ampm = (sunrise_hour < 12) ? strings->am : strings->pm;
+          
+          int ss_h = sunset_hour % 12;
+          if (ss_h == 0) ss_h = 12;
+          const char *ss_ampm = (sunset_hour < 12) ? strings->am : strings->pm;
+          
+          snprintf(sunrise_buf, sizeof(sunrise_buf), "%s %d:%02d%s", strings->sunrise, sr_h, sunrise_min, sr_ampm);
+          snprintf(sunset_buf, sizeof(sunset_buf), "%s %d:%02d%s", strings->sunset, ss_h, sunset_min, ss_ampm);
+        }
+        
+        lv_label_set_text(lbl_sunrise, sunrise_buf);
+        lv_label_set_text(lbl_sunset, sunset_buf);
+      }
 
       for (int i = 0; i < 7; i++) {
         const char *date = times[i];
