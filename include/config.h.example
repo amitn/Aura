@@ -48,6 +48,8 @@
 #define CONFIG_USE_24_HOUR false       // true for 24hr, false for 12hr
 #define CONFIG_USE_NIGHT_MODE false    // true to enable night dimming
 #define CONFIG_BRIGHTNESS 128          // 1-255, default backlight brightness
+#define CONFIG_AUTO_ROTATE false       // true to enable auto-rotation between panels
+#define CONFIG_AUTO_ROTATE_INTERVAL 3000  // Auto-rotation interval in milliseconds (default 3 sec)
 
 // =============================================================================
 // Language Configuration (Optional)

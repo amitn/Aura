@@ -56,6 +56,12 @@
 #ifndef CONFIG_LANGUAGE
 #define CONFIG_LANGUAGE LANG_EN
 #endif
+#ifndef CONFIG_AUTO_ROTATE
+#define CONFIG_AUTO_ROTATE false
+#endif
+#ifndef CONFIG_AUTO_ROTATE_INTERVAL
+#define CONFIG_AUTO_ROTATE_INTERVAL 3000
+#endif
 
 #define XPT2046_IRQ 36   // T_IRQ
 #define XPT2046_MOSI 32  // T_DIN
@@ -128,6 +134,12 @@ static bool night_mode_active = false;
 static bool temp_screen_wakeup_active = false;
 static lv_timer_t *temp_screen_wakeup_timer = nullptr;
 
+// Auto-rotation variables
+static bool auto_rotate_enabled = false;
+static uint32_t auto_rotate_interval = 3000;  // Default 3 seconds
+static lv_timer_t *auto_rotate_timer = nullptr;
+static int current_panel = 0;  // 0=daily, 1=hourly, 2=transit
+
 // UI components
 static lv_obj_t *lbl_today_temp;
 static lv_obj_t *lbl_today_feels_like;
@@ -156,6 +168,7 @@ static lv_obj_t *location_win = nullptr;
 static lv_obj_t *unit_switch;
 static lv_obj_t *clock_24hr_switch;
 static lv_obj_t *night_mode_switch;
+static lv_obj_t *auto_rotate_switch;
 static lv_obj_t *language_dropdown;
 static lv_obj_t *lbl_clock;
 
@@ -278,6 +291,12 @@ void activate_night_mode();
 void deactivate_night_mode();
 void check_for_night_mode();
 void handle_temp_screen_wakeup_timeout(lv_timer_t *timer);
+
+// Auto-rotation functions
+void auto_rotate_callback(lv_timer_t *timer);
+void start_auto_rotation();
+void stop_auto_rotation();
+void rotate_to_next_panel();
 
 
 int day_of_week(int y, int m, int d) {
@@ -449,6 +468,8 @@ void setup() {
   uint32_t brightness = prefs.getUInt("brightness", CONFIG_BRIGHTNESS);
   use_24_hour = prefs.getBool("use24Hour", CONFIG_USE_24_HOUR);
   current_language = (Language)prefs.getUInt("language", CONFIG_LANGUAGE);
+  auto_rotate_enabled = prefs.getBool("autoRotate", CONFIG_AUTO_ROTATE);
+  auto_rotate_interval = prefs.getUInt("autoRotateInt", CONFIG_AUTO_ROTATE_INTERVAL);
   
   // Load transit preferences with compile-time config as defaults
   const char* bus_default = CONFIG_BUS_STOP_ID;
@@ -720,6 +741,12 @@ void create_ui() {
   lv_obj_set_style_text_color(lbl_clock, lv_color_hex(0xb9ecff), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_label_set_text(lbl_clock, "");
   lv_obj_align(lbl_clock, LV_ALIGN_TOP_RIGHT, -10, 2);
+
+  // Start auto-rotation if enabled
+  current_panel = 0;  // Reset to daily panel
+  if (auto_rotate_enabled) {
+    start_auto_rotation();
+  }
 }
 
 void populate_results_dropdown() {
@@ -1104,11 +1131,26 @@ void create_settings_window() {
   }
   lv_obj_add_event_cb(night_mode_switch, settings_event_handler, LV_EVENT_VALUE_CHANGED, NULL);
 
+  // 'Auto-rotate' switch
+  lv_obj_t *lbl_auto_rotate = lv_label_create(cont);
+  lv_label_set_text(lbl_auto_rotate, "Auto-rotate");
+  lv_obj_set_style_text_font(lbl_auto_rotate, get_font_12(), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_align_to(lbl_auto_rotate, lbl_night_mode, LV_ALIGN_OUT_BOTTOM_LEFT, 0, vertical_element_spacing);
+
+  auto_rotate_switch = lv_switch_create(cont);
+  lv_obj_align_to(auto_rotate_switch, lbl_auto_rotate, LV_ALIGN_OUT_RIGHT_MID, 6, 0);
+  if (auto_rotate_enabled) {
+    lv_obj_add_state(auto_rotate_switch, LV_STATE_CHECKED);
+  } else {
+    lv_obj_remove_state(auto_rotate_switch, LV_STATE_CHECKED);
+  }
+  lv_obj_add_event_cb(auto_rotate_switch, settings_event_handler, LV_EVENT_VALUE_CHANGED, NULL);
+
   // 'Use F' switch
   lv_obj_t *lbl_u = lv_label_create(cont);
   lv_label_set_text(lbl_u, strings->use_fahrenheit);
   lv_obj_set_style_text_font(lbl_u, get_font_12(), LV_PART_MAIN | LV_STATE_DEFAULT);
-  lv_obj_align_to(lbl_u, lbl_night_mode, LV_ALIGN_OUT_BOTTOM_LEFT, 0, vertical_element_spacing);
+  lv_obj_align_to(lbl_u, lbl_auto_rotate, LV_ALIGN_OUT_BOTTOM_LEFT, 0, vertical_element_spacing);
 
   unit_switch = lv_switch_create(cont);
   lv_obj_align_to(unit_switch, lbl_u, LV_ALIGN_OUT_RIGHT_MID, 6, 0);
@@ -1239,6 +1281,15 @@ static void settings_event_handler(lv_event_t *e) {
     use_night_mode = lv_obj_has_state(night_mode_switch, LV_STATE_CHECKED);
   }
 
+  if (tgt == auto_rotate_switch && code == LV_EVENT_VALUE_CHANGED) {
+    auto_rotate_enabled = lv_obj_has_state(auto_rotate_switch, LV_STATE_CHECKED);
+    if (auto_rotate_enabled) {
+      start_auto_rotation();
+    } else {
+      stop_auto_rotation();
+    }
+  }
+
   if (tgt == language_dropdown && code == LV_EVENT_VALUE_CHANGED) {
     current_language = (Language)lv_dropdown_get_selected(language_dropdown);
     // Update the UI immediately to reflect language change
@@ -1249,6 +1300,8 @@ static void settings_event_handler(lv_event_t *e) {
     prefs.putBool("useFahrenheit", use_fahrenheit);
     prefs.putBool("use24Hour", use_24_hour);
     prefs.putBool("useNightMode", use_night_mode);
+    prefs.putBool("autoRotate", auto_rotate_enabled);
+    prefs.putUInt("autoRotateInt", auto_rotate_interval);
     prefs.putUInt("language", current_language);
 
     lv_keyboard_set_textarea(kb, nullptr);
@@ -1265,6 +1318,8 @@ static void settings_event_handler(lv_event_t *e) {
     prefs.putBool("useFahrenheit", use_fahrenheit);
     prefs.putBool("use24Hour", use_24_hour);
     prefs.putBool("useNightMode", use_night_mode);
+    prefs.putBool("autoRotate", auto_rotate_enabled);
+    prefs.putUInt("autoRotateInt", auto_rotate_interval);
     prefs.putUInt("language", current_language);
 
     lv_keyboard_set_textarea(kb, nullptr);
@@ -1321,6 +1376,60 @@ void handle_temp_screen_wakeup_timeout(lv_timer_t *timer) {
     lv_timer_del(temp_screen_wakeup_timer);
     temp_screen_wakeup_timer = nullptr;
   }
+}
+
+// Auto-rotation functions implementation
+void rotate_to_next_panel() {
+  const LocalizedStrings* strings = get_strings(current_language);
+  
+  // Determine how many panels are available
+  int max_panels = transit_enabled ? 3 : 2;
+  
+  // Move to the next panel
+  current_panel = (current_panel + 1) % max_panels;
+  
+  // Hide all panels first
+  lv_obj_add_flag(box_daily, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(box_hourly, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(box_transit, LV_OBJ_FLAG_HIDDEN);
+  
+  // Show the appropriate panel
+  switch (current_panel) {
+    case 0:
+      lv_label_set_text(lbl_forecast, strings->seven_day_forecast);
+      lv_obj_clear_flag(box_daily, LV_OBJ_FLAG_HIDDEN);
+      break;
+    case 1:
+      lv_label_set_text(lbl_forecast, strings->hourly_forecast);
+      lv_obj_clear_flag(box_hourly, LV_OBJ_FLAG_HIDDEN);
+      break;
+    case 2:
+      lv_label_set_text(lbl_forecast, strings->transit_title);
+      lv_obj_clear_flag(box_transit, LV_OBJ_FLAG_HIDDEN);
+      fetch_tfl_arrivals();  // Refresh transit data when viewing
+      break;
+  }
+}
+
+void auto_rotate_callback(lv_timer_t *timer) {
+  rotate_to_next_panel();
+}
+
+void start_auto_rotation() {
+  if (auto_rotate_timer) {
+    lv_timer_del(auto_rotate_timer);
+  }
+  auto_rotate_timer = lv_timer_create(auto_rotate_callback, auto_rotate_interval, NULL);
+  Serial.print("Auto-rotation started with interval: ");
+  Serial.println(auto_rotate_interval);
+}
+
+void stop_auto_rotation() {
+  if (auto_rotate_timer) {
+    lv_timer_del(auto_rotate_timer);
+    auto_rotate_timer = nullptr;
+  }
+  Serial.println("Auto-rotation stopped");
 }
 
 void do_geocode_query(const char *q) {
